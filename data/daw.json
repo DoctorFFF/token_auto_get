@@ -1,23 +1,197 @@
 {
   "accounts": [
     {
-      "username": "Doctor_FFF",
+      "username": "Doctor_FF2",
       "password": "Frt20040114",
-      "created_at": "2026-05-14 19:35:50",
-      "updated_at": "2026-05-14 22:32:30",
+      "created_at": "2026-05-16 16:25:31",
+      "updated_at": "2026-05-23 22:41:24",
       "stats": {
         "last_status": "success",
         "last_message": "今日已签到",
-        "last_checkin_time": "2026-05-14 22:32:30",
-        "last_checkin_date": "2026-05-14",
-        "last_quota_awarded": 50683,
+        "last_checkin_time": "2026-05-23 22:41:24",
+        "last_checkin_date": "2026-05-23",
+        "last_quota_awarded": 330098,
         "checked_in_today": true,
-        "checkin_count": 8,
-        "total_checkins": 22,
-        "total_quota": 5761507,
-        "success_times": 3,
+        "checkin_count": 14,
+        "total_checkins": 28,
+        "total_quota": 7756416,
+        "success_times": 6,
         "fail_times": 0,
         "records": [
+          {
+            "checkin_date": "2026-05-23",
+            "quota_awarded": 330098
+          },
+          {
+            "checkin_date": "2026-05-21",
+            "quota_awarded": 457692
+          },
+          {
+            "checkin_date": "2026-05-20",
+            "quota_awarded": 374883
+          },
+          {
+            "checkin_date": "2026-05-18",
+            "quota_awarded": 123554
+          },
+          {
+            "checkin_date": "2026-05-17",
+            "quota_awarded": 395369
+          },
+          {
+            "checkin_date": "2026-05-16",
+            "quota_awarded": 71696
+          },
+          {
+            "checkin_date": "2026-05-14",
+            "quota_awarded": 132238
+          },
+          {
+            "checkin_date": "2026-05-13",
+            "quota_awarded": 134734
+          },
+          {
+            "checkin_date": "2026-05-11",
+            "quota_awarded": 108194
+          },
+          {
+            "checkin_date": "2026-05-10",
+            "quota_awarded": 479187
+          },
+          {
+            "checkin_date": "2026-05-08",
+            "quota_awarded": 244581
+          },
+          {
+            "checkin_date": "2026-05-07",
+            "quota_awarded": 247851
+          },
+          {
+            "checkin_date": "2026-05-06",
+            "quota_awarded": 247776
+          },
+          {
+            "checkin_date": "2026-05-05",
+            "quota_awarded": 402261
+          }
+        ]
+      }
+    },
+    {
+      "username": "Doctor_FF3",
+      "password": "Frt20040114",
+      "created_at": "2026-05-16 16:26:07",
+      "updated_at": "2026-05-23 22:31:27",
+      "stats": {
+        "last_status": "success",
+        "last_message": "签到成功",
+        "last_checkin_time": "2026-05-23 22:31:27",
+        "last_checkin_date": "2026-05-23",
+        "last_quota_awarded": 356147,
+        "checked_in_today": true,
+        "checkin_count": 13,
+        "total_checkins": 22,
+        "total_quota": 6228480,
+        "success_times": 6,
+        "fail_times": 0,
+        "records": [
+          {
+            "checkin_date": "2026-05-23",
+            "quota_awarded": 356147
+          },
+          {
+            "checkin_date": "2026-05-21",
+            "quota_awarded": 498589
+          },
+          {
+            "checkin_date": "2026-05-20",
+            "quota_awarded": 464862
+          },
+          {
+            "checkin_date": "2026-05-18",
+            "quota_awarded": 318958
+          },
+          {
+            "checkin_date": "2026-05-17",
+            "quota_awarded": 138073
+          },
+          {
+            "checkin_date": "2026-05-16",
+            "quota_awarded": 200574
+          },
+          {
+            "checkin_date": "2026-05-13",
+            "quota_awarded": 182108
+          },
+          {
+            "checkin_date": "2026-05-11",
+            "quota_awarded": 329075
+          },
+          {
+            "checkin_date": "2026-05-10",
+            "quota_awarded": 376947
+          },
+          {
+            "checkin_date": "2026-05-08",
+            "quota_awarded": 71052
+          },
+          {
+            "checkin_date": "2026-05-07",
+            "quota_awarded": 275701
+          },
+          {
+            "checkin_date": "2026-05-06",
+            "quota_awarded": 378950
+          },
+          {
+            "checkin_date": "2026-05-05",
+            "quota_awarded": 229825
+          }
+        ]
+      }
+    },
+    {
+      "username": "Doctor_FFF",
+      "password": "Frt20040114",
+      "created_at": "2026-05-16 16:26:41",
+      "updated_at": "2026-05-23 22:43:40",
+      "stats": {
+        "last_status": "success",
+        "last_message": "今日已签到",
+        "last_checkin_time": "2026-05-23 22:43:40",
+        "last_checkin_date": "2026-05-23",
+        "last_quota_awarded": 278313,
+        "checked_in_today": true,
+        "checkin_count": 14,
+        "total_checkins": 28,
+        "total_quota": 7781749,
+        "success_times": 5,
+        "fail_times": 0,
+        "records": [
+          {
+            "checkin_date": "2026-05-23",
+            "quota_awarded": 278313
+          },
+          {
+            "checkin_date": "2026-05-21",
+            "quota_awarded": 456324
+          },
+          {
+            "checkin_date": "2026-05-20",
+            "quota_awarded": 274903
+          },
+          {
+            "checkin_date": "2026-05-18",
+            "quota_awarded": 387610
+          },
+          {
+            "checkin_date": "2026-05-17",
+            "quota_awarded": 442924
+          },
+          {
+            "checkin_date": "2026-05-16",
+            "quota_awarded": 180168
+          },
           {
             "checkin_date": "2026-05-14",
             "quota_awarded": 50683
@@ -49,6 +223,43 @@
           {
             "checkin_date": "2026-05-05",
             "quota_awarded": 253497
+          }
+        ]
+      }
+    },
+    {
+      "username": "Doctor_FF1",
+      "password": "Frt20040114",
+      "created_at": "2026-05-18 14:47:58",
+      "updated_at": "2026-05-23 22:43:51",
+      "stats": {
+        "last_status": "success",
+        "last_message": "今日已签到",
+        "last_checkin_time": "2026-05-23 22:43:51",
+        "last_checkin_date": "2026-05-23",
+        "last_quota_awarded": 218703,
+        "checked_in_today": true,
+        "checkin_count": 4,
+        "total_checkins": 4,
+        "total_quota": 961457,
+        "success_times": 4,
+        "fail_times": 0,
+        "records": [
+          {
+            "checkin_date": "2026-05-23",
+            "quota_awarded": 218703
+          },
+          {
+            "checkin_date": "2026-05-21",
+            "quota_awarded": 357114
+          },
+          {
+            "checkin_date": "2026-05-20",
+            "quota_awarded": 261233
+          },
+          {
+            "checkin_date": "2026-05-18",
+            "quota_awarded": 124407
           }
         ]
       }

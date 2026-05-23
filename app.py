@@ -4,7 +4,7 @@ import traceback
 import importlib.util
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
+import time
 from flask import Flask, render_template, request, jsonify
 
 
@@ -374,26 +374,39 @@ def run_one_checkin(plugin_name, username):
     }
 
 
-def run_batch_checkin(plugin_name, usernames):
+def run_batch_checkin(plugin_name, usernames, mode="parallel"):
+    """
+    mode: 'parallel' (并发) 或 'sequential' (顺序)
+    """
     results = []
-
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        future_map = {}
-
+    
+    if mode == "sequential":
+        # 顺序执行
         for username in usernames:
-            future = executor.submit(run_one_checkin, plugin_name, username)
-            future_map[future] = username
+            res = run_one_checkin(plugin_name, username)
+            results.append(res)
+            # 每个账号签到后停顿 2-3 秒，避免请求过快
+            if username != usernames[-1]: # 最后一个不需要等待
+                time.sleep(2) 
+    else:
+        # 并发执行 (原有逻辑)
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            future_map = {}
 
-        for future in as_completed(future_map):
-            try:
-                results.append(future.result())
-            except Exception as e:
-                results.append({
-                    "success": False,
-                    "message": str(e),
-                    "username": future_map[future],
-                    "plugin_name": plugin_name
-                })
+            for username in usernames:
+                future = executor.submit(run_one_checkin, plugin_name, username)
+                future_map[future] = username
+
+            for future in as_completed(future_map):
+                try:
+                    results.append(future.result())
+                except Exception as e:
+                    results.append({
+                        "success": False,
+                        "message": str(e),
+                        "username": future_map[future],
+                        "plugin_name": plugin_name
+                    })
 
     return results
 
@@ -516,6 +529,7 @@ def api_checkin_selected():
 
     plugin_name = req.get("plugin_name")
     usernames = req.get("usernames", [])
+    mode = req.get("mode", "parallel")  # 获取模式，默认并发
 
     if plugin_name not in plugins:
         return jsonify({
@@ -529,11 +543,11 @@ def api_checkin_selected():
             "message": "请至少选择一个账号"
         })
 
-    results = run_batch_checkin(plugin_name, usernames)
+    results = run_batch_checkin(plugin_name, usernames, mode=mode)
 
     return jsonify({
         "success": True,
-        "message": "选中账号签到完成",
+        "message": f"选中账号签到完成 (模式: {'顺序' if mode == 'sequential' else '并发'})",
         "results": results
     })
 
@@ -543,6 +557,7 @@ def api_checkin_all():
     req = request.get_json() or {}
 
     plugin_name = req.get("plugin_name")
+    mode = req.get("mode", "parallel") # 获取模式，默认并发
 
     if plugin_name not in plugins:
         return jsonify({
@@ -563,15 +578,13 @@ def api_checkin_all():
             "message": "该站点暂无账号"
         })
 
-    results = run_batch_checkin(plugin_name, usernames)
+    results = run_batch_checkin(plugin_name, usernames, mode=mode)
 
     return jsonify({
         "success": True,
-        "message": "该站点全部账号签到完成",
+        "message": f"该站点全部账号签到完成 (模式: {'顺序' if mode == 'sequential' else '并发'})",
         "results": results
     })
-
-
 @app.route("/api/reload_plugins", methods=["POST"])
 def api_reload_plugins():
     load_plugins()

@@ -75,6 +75,7 @@
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050">
     <div id="toastContainer"></div>
 </div>
+
 <div class="container py-4">
 
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -195,10 +196,11 @@
                 </div>
 
                 <div>
-                    <button class="btn btn-success btn-sm" onclick="checkinAll('{{ site.name }}')">
+                    <!-- 修改 onclick 事件为触发模态框 -->
+                    <button class="btn btn-success btn-sm" onclick="triggerCheckinAll('{{ site.name }}')">
                         该站点全部签到
                     </button>
-                    <button class="btn btn-primary btn-sm" onclick="checkinSelected('{{ site.name }}')">
+                    <button class="btn btn-primary btn-sm" onclick="triggerCheckinSelected('{{ site.name }}')">
                         选中账号签到
                     </button>
                 </div>
@@ -386,14 +388,54 @@
 
 </div>
 
+<!-- 签到模式选择模态框 -->
+<div class="modal fade" id="checkinModeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">选择签到模式</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>请选择执行签到的方式：</p>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="checkinMode" id="modeParallel" value="parallel" checked>
+                    <label class="form-check-label" for="modeParallel">
+                        <strong>并发模式 (推荐)</strong>
+                        <div class="text-muted small">同时执行多个账号签到，速度快，但可能被风控。</div>
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="checkinMode" id="modeSequential" value="sequential">
+                    <label class="form-check-label" for="modeSequential">
+                        <strong>顺序模式 (稳定)</strong>
+                        <div class="text-muted small">逐个账号执行，每个间隔 2 秒，更稳定，适合账号较多时。</div>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="confirmCheckin()">开始执行</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
+    // === 全局变量，用于暂存待执行的签到任务 ===
+    let pendingCheckinTask = null; 
+
+    // === 工具函数 ===
     function log(text) {
         const box = document.getElementById("logBox");
         const time = new Date().toLocaleString();
-        box.textContent = `[${time}] ${text}\n\n` + box.textContent;
+        // 限制日志长度，避免页面卡顿
+        if (box.textContent.length > 5000) {
+            box.textContent = "...(日志过长已截断)\n";
+        }
+        box.textContent = `[${time}] ${text}\n` + box.textContent;
     }
 
     function clearLog() {
@@ -401,25 +443,31 @@
     }
 
     async function postJson(url, data) {
-        const resp = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(data)
-        });
-
-        return await resp.json();
+        try {
+            const resp = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+            return await resp.json();
+        } catch (e) {
+            return { success: false, message: "网络请求失败: " + e.message };
+        }
     }
+
+    // === Toast 提示 (统一使用这一个) ===
     function showToast(message, type = "info", delay = 3000) {
         const toastId = "toast-" + Date.now();
+        // 根据类型选择背景色类
+        let bgClass = "text-bg-info";
+        if (type === "success") bgClass = "text-bg-success";
+        if (type === "danger") bgClass = "text-bg-danger";
+        if (type === "warning") bgClass = "text-bg-warning";
 
         const toastHTML = `
-            <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+            <div id="${toastId}" class="toast align-items-center ${bgClass} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
                 <div class="d-flex">
-                    <div class="toast-body">
-                        ${message}
-                    </div>
+                    <div class="toast-body">${message}</div>
                     <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
             </div>
@@ -429,10 +477,7 @@
         container.insertAdjacentHTML("beforeend", toastHTML);
 
         const toastEl = document.getElementById(toastId);
-        const toast = new bootstrap.Toast(toastEl, {
-            delay: delay
-        });
-
+        const toast = new bootstrap.Toast(toastEl, { delay: delay });
         toast.show();
 
         toastEl.addEventListener("hidden.bs.toast", () => {
@@ -440,14 +485,14 @@
         });
     }
 
+    // === 图表绘制 ===
     function drawCharts(pluginName, index, records) {
-        if (!Array.isArray(records) || records.length === 0) {
-            return;
-        }
+        if (!Array.isArray(records) || records.length === 0) return;
 
         const labels = records.map(item => item.checkin_date || "-");
         const dataQuota = records.map(item => Number(item.quota_awarded || 0));
 
+        // 折线图
         const lineCanvas = document.getElementById(`lineChart-${pluginName}-${index}`);
         if (lineCanvas) {
             new Chart(lineCanvas, {
@@ -466,20 +511,12 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
+                    scales: { y: { beginAtZero: true } }
                 }
             });
         }
 
+        // 饼图
         const pieCanvas = document.getElementById(`pieChart-${pluginName}-${index}`);
         if (pieCanvas) {
             new Chart(pieCanvas, {
@@ -487,7 +524,6 @@
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: "签到占比",
                         data: dataQuota,
                         backgroundColor: labels.map((_, i) => `hsl(${i * 35 % 360}, 70%, 60%)`),
                         borderWidth: 1
@@ -496,202 +532,212 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: "bottom"
-                        }
-                    }
+                    plugins: { legend: { position: "bottom" } }
                 }
             });
         }
     }
 
+    // 初始化图表
     document.addEventListener("DOMContentLoaded", function () {
         document.querySelectorAll(".account-row").forEach(row => {
             const pluginName = row.dataset.site;
             const index = row.dataset.chartIndex;
             const recordsText = row.dataset.records || "[]";
-
             let records = [];
-
-            try {
-                records = JSON.parse(recordsText);
-            } catch (e) {
-                records = [];
-            }
-
+            try { records = JSON.parse(recordsText); } catch (e) { records = []; }
             drawCharts(pluginName, index, records);
         });
     });
+
+    // === 业务逻辑 ===
+
+    // 1. 添加账号
     async function addAccount(pluginName) {
         const usernameInput = document.getElementById(`username-${pluginName}`);
         const passwordInput = document.getElementById(`password-${pluginName}`);
-
         const username = usernameInput.value.trim();
         const password = passwordInput.value.trim();
 
         if (!username || !password) {
-            alert("用户名和密码不能为空");
             showToast("用户名和密码不能为空", "warning");
             return;
-        
         }
 
         log(`正在添加账号：${pluginName} / ${username}`);
-
         const result = await postJson("/api/add_account", {
             plugin_name: pluginName,
             username: username,
             password: password
         });
 
-        log(JSON.stringify(result, null, 2));
+        log(`添加结果: ${result.message}`);
+        showToast(result.message, result.success ? "success" : "danger");
 
         if (result.success) {
-            location.reload();
-        } else {
-            alert(result.message || "执行完成");
-showToast(result.message || "执行完成", result.success ? "success" : "danger");
+            setTimeout(() => location.reload(), 1000);
         }
     }
 
+    // 2. 删除账号
     async function deleteAccount(pluginName, username) {
-        if (!confirm(`确定删除账号 ${username} 吗？该账号下的历史记录也会随账号一起从 JSON 中移除。`)) {
-            return;
-        }
+        if (!confirm(`确定删除账号 ${username} 吗？历史记录也将被清除。`)) return;
 
         log(`正在删除账号：${pluginName} / ${username}`);
-
         const result = await postJson("/api/delete_account", {
             plugin_name: pluginName,
             username: username
         });
 
-        log(JSON.stringify(result, null, 2));
+        log(`删除结果: ${result.message}`);
+        showToast(result.message, result.success ? "success" : "danger");
 
         if (result.success) {
-            location.reload();
-        } else {
-            alert(result.message || "删除失败");
+            setTimeout(() => location.reload(), 1000);
         }
     }
 
+    // 3. 单个账号签到 (不需要选模式，直接执行)
     async function checkinOne(pluginName, username) {
         log(`开始单账号签到：${pluginName} / ${username}`);
-
         const result = await postJson("/api/checkin_one", {
             plugin_name: pluginName,
             username: username
         });
 
-        log(JSON.stringify(result, null, 2));
-
-        alert(result.message || "执行完成");
-        showToast(result.message || "执行完成", result.success ? "success" : "danger");
-        location.reload();
+        log(`签到结果: ${result.message}`);
+        showToast(result.message, result.success ? "success" : "danger");
+        
+        // 单个签到后刷新页面以更新统计
+        setTimeout(() => location.reload(), 1500);
     }
 
-    async function checkinAll(pluginName) {
-        if (!confirm("确定对该站点下所有账号执行签到吗？")) {
-            return;
-        }
-
-        log(`开始全站点签到：${pluginName}`);
-
-        const result = await postJson("/api/checkin_all", {
+    // 4. 触发批量签到选择框 (全部)
+    function triggerCheckinAll(pluginName) {
+        pendingCheckinTask = {
+            type: 'all',
             plugin_name: pluginName
-        });
-
-        log(JSON.stringify(result, null, 2));
-
-        alert(result.message || "执行完成");
-        showToast(result.message || "执行完成", result.success ? "success" : "danger");
-        location.reload();
+        };
+        // 弹出模态框
+        const modal = new bootstrap.Modal(document.getElementById('checkinModeModal'));
+        modal.show();
     }
 
-    async function checkinSelected(pluginName) {
+    // 5. 触发批量签到选择框 (选中)
+    function triggerCheckinSelected(pluginName) {
         const checkboxes = document.querySelectorAll(`.account-checkbox-${pluginName}:checked`);
         const usernames = Array.from(checkboxes).map(x => x.value);
 
         if (usernames.length === 0) {
-            alert("请先选择账号");
-            showToast("请先选择账号", "warning");
+            showToast("请先勾选至少一个账号", "warning");
             return;
         }
 
-        log(`开始选中账号签到：${pluginName} / ${usernames.join(", ")}`);
-
-        const result = await postJson("/api/checkin_selected", {
+        pendingCheckinTask = {
+            type: 'selected',
             plugin_name: pluginName,
             usernames: usernames
-        });
-
-        log(JSON.stringify(result, null, 2));
-
-        alert(result.message || "执行完成");
-        showToast(result.message || "执行完成", result.success ? "success" : "danger");
-
-        location.reload();
+        };
+        // 弹出模态框
+        const modal = new bootstrap.Modal(document.getElementById('checkinModeModal'));
+        modal.show();
     }
 
-    function toggleSiteAccounts(pluginName, source) {
-        const checkboxes = document.querySelectorAll(`.account-checkbox-${pluginName}`);
-        checkboxes.forEach(item => {
-            item.checked = source.checked;
-        });
+    // 6. 确认执行签到 (从模态框调用)
+    async function confirmCheckin() {
+        if (!pendingCheckinTask) return;
+
+        // 获取用户选择的模式
+        const mode = document.querySelector('input[name="checkinMode"]:checked').value;
+        const modeText = mode === 'sequential' ? '顺序' : '并发';
+        
+        // 关闭模态框
+        const modalEl = document.getElementById('checkinModeModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        modal.hide();
+
+        log(`准备执行: ${pendingCheckinTask.plugin_name} (${modeText}模式)`);
+
+        let result;
+        if (pendingCheckinTask.type === 'all') {
+            log(`开始全站点签到...`);
+            result = await postJson("/api/checkin_all", {
+                plugin_name: pendingCheckinTask.plugin_name,
+                mode: mode
+            });
+        } else {
+            log(`开始选中账号签到: ${pendingCheckinTask.usernames.join(", ")}`);
+            result = await postJson("/api/checkin_selected", {
+                plugin_name: pendingCheckinTask.plugin_name,
+                usernames: pendingCheckinTask.usernames,
+                mode: mode
+            });
+        }
+
+        // 处理返回结果
+        log(`执行完成: ${result.message}`);
+        showToast(result.message, result.success ? "success" : "danger");
+
+        // 如果有详细结果，打印前几个到日志
+        if (result.results && Array.isArray(result.results)) {
+            let successCount = result.results.filter(r => r.success).length;
+            let failCount = result.results.length - successCount;
+            log(`统计: 成功 ${successCount}, 失败 ${failCount}`);
+            
+            // 记录第一个失败的详细信息方便调试
+            const firstFail = result.results.find(r => !r.success);
+            if (firstFail) {
+                log(`失败示例 [${firstFail.username}]: ${firstFail.message}`);
+            }
+        }
+
+        // 清空任务
+        pendingCheckinTask = null;
+
+        // 延迟刷新
+        setTimeout(() => location.reload(), 2000);
     }
 
+    // 7. 重新加载插件
     async function reloadPlugins() {
-        log("正在重新扫描插件目录");
-
+        log("正在重新扫描插件目录...");
         const result = await postJson("/api/reload_plugins", {});
-
-        log(JSON.stringify(result, null, 2));
-
-        alert(result.message || "插件已重新扫描");
-        showToast(result.message || "插件已重新扫描", result.success ? "success" : "info");
-        location.reload();
+        log(result.message);
+        showToast(result.message, "info");
+        setTimeout(() => location.reload(), 1000);
     }
 
+    // 8. 筛选功能
     function filterSites() {
         const siteValue = document.getElementById("siteFilter").value;
         const accountKeyword = document.getElementById("accountFilter").value.trim().toLowerCase();
-
         const siteBlocks = document.querySelectorAll(".site-block");
 
         siteBlocks.forEach(site => {
             const siteName = site.dataset.site;
-
             let showSite = true;
 
-            if (siteValue && siteName !== siteValue) {
-                showSite = false;
-            }
+            if (siteValue && siteName !== siteValue) showSite = false;
 
             const rows = site.querySelectorAll(".account-row");
-
             let matchedAccountCount = 0;
 
             rows.forEach(row => {
                 const username = row.dataset.username.toLowerCase();
                 const matchAccount = !accountKeyword || username.includes(accountKeyword);
-
+                
+                // 控制行显示
                 row.style.display = matchAccount ? "" : "none";
-
+                // 控制详情行显示
                 const next = row.nextElementSibling;
                 if (next && next.classList.contains("detail-row")) {
                     next.style.display = matchAccount ? "" : "none";
                 }
 
-                if (matchAccount) {
-                    matchedAccountCount += 1;
-                }
+                if (matchAccount) matchedAccountCount += 1;
             });
 
-            if (accountKeyword && rows.length > 0 && matchedAccountCount === 0) {
-                showSite = false;
-            }
-
+            if (accountKeyword && rows.length > 0 && matchedAccountCount === 0) showSite = false;
             site.style.display = showSite ? "" : "none";
         });
     }
@@ -701,41 +747,11 @@ showToast(result.message || "执行完成", result.success ? "success" : "danger
         document.getElementById("accountFilter").value = "";
         filterSites();
     }
-    // === 新增 Toast 弹窗 ===
-    function showToast(message,type="info",delay=3000){
-        const toastId="toast-"+Date.now();
-        const toastHTML=`<div id="${toastId}" class="toast align-items-center text-bg-${type} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body">${message}</div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-        </div>`;
-        const container=document.getElementById("toastContainer");
-        container.insertAdjacentHTML("beforeend",toastHTML);
-        const toastEl=document.getElementById(toastId);
-        const toast=new bootstrap.Toast(toastEl,{delay:delay});
-        toast.show();
-        toastEl.addEventListener('hidden.bs.toast',()=>toastEl.remove());
-    }
 
-    // === 绘制图表 ===
-    function drawCharts(pluginName,index,records){
-        const labels=records.map(r=>r.checkin_date);
-        const dataQuota=records.map(r=>r.quota_awarded);
-        const ctxLine=document.getElementById(`lineChart-${pluginName}-${index}`);
-        if(ctxLine)new Chart(ctxLine,{type:'line',data:{labels:labels,datasets:[{label:'签到额度',data:dataQuota,borderColor:'rgba(75,192,192,1)',backgroundColor:'rgba(75,192,192,0.2)',fill:true,tension:0.3}]},options:{responsive:true,plugins:{legend:{display:true}}}});
-        const ctxPie=document.getElementById(`pieChart-${pluginName}-${index}`);
-        if(ctxPie)new Chart(ctxPie,{type:'pie',data:{labels:labels,datasets:[{label:'签到占比',data:dataQuota,backgroundColor:labels.map((_,i)=>`hsl(${i*30%360},70%,60%)`),borderWidth:1}]},options:{responsive:true,plugins:{legend:{position:'bottom'}}}});
+    function toggleSiteAccounts(pluginName, source) {
+        const checkboxes = document.querySelectorAll(`.account-checkbox-${pluginName}`);
+        checkboxes.forEach(item => item.checked = source.checked);
     }
-
-    document.addEventListener('DOMContentLoaded',()=>{
-        document.querySelectorAll('.account-row').forEach((row,idx)=>{
-            const pluginName=row.dataset.site;
-            const records=JSON.parse(row.dataset.records||'[]');
-            drawCharts(pluginName,idx+1,records);
-        });
-    });
 </script>
-
 </body>
 </html>

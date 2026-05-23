@@ -1,0 +1,152 @@
+{
+  "accounts": [
+    {
+      "username": "asdwadwad123",
+      "password": "asdwadwad123",
+      "created_at": "2026-05-17 02:03:22",
+      "updated_at": "2026-05-23 22:45:08",
+      "stats": {
+        "last_status": "success",
+        "last_message": "签到成功",
+        "last_checkin_time": "2026-05-23 22:45:08",
+        "last_checkin_date": "2026-05-23",
+        "last_quota_awarded": 4216,
+        "checked_in_today": true,
+        "checkin_count": 5,
+        "total_checkins": 5,
+        "total_quota": 107375,
+        "success_times": 5,
+        "fail_times": 0,
+        "records": [
+          {
+            "checkin_date": "2026-05-23",
+            "quota_awarded": 4216
+          },
+          {
+            "checkin_date": "2026-05-21",
+            "quota_awarded": 3563
+          },
+          {
+            "checkin_date": "2026-05-20",
+            "quota_awarded": 42573
+          },
+          {
+            "checkin_date": "2026-05-18",
+            "quota_awarded": 11863
+          },
+          {
+            "checkin_date": "2026-05-17",
+            "quota_awarded": 45160
+          }
+        ]
+      }
+    },
+    {
+      "username": "435edrgdrg",
+      "password": "435edrgdrg",
+      "created_at": "2026-05-17 02:04:28",
+      "updated_at": "2026-05-21 21:23:57",
+      "stats": {
+        "last_status": "success",
+        "last_message": "签到成功",
+        "last_checkin_time": "2026-05-21 21:23:57",
+        "last_checkin_date": "2026-05-21",
+        "last_quota_awarded": 22717,
+        "checked_in_today": true,
+        "checkin_count": 4,
+        "total_checkins": 4,
+        "total_quota": 130163,
+        "success_times": 4,
+        "fail_times": 0,
+        "records": [
+          {
+            "checkin_date": "2026-05-21",
+            "quota_awarded": 22717
+          },
+          {
+            "checkin_date": "2026-05-20",
+            "quota_awarded": 44312
+          },
+          {
+            "checkin_date": "2026-05-18",
+            "quota_awarded": 37510
+          },
+          {
+            "checkin_date": "2026-05-17",
+            "quota_awarded": 25624
+          }
+        ]
+      }
+    },
+    {
+      "username": "sjkjki344jgd",
+      "password": "sjkjki344jgd",
+      "created_at": "2026-05-17 02:05:22",
+      "updated_at": "2026-05-21 21:24:30",
+      "stats": {
+        "last_status": "success",
+        "last_message": "签到成功",
+        "last_checkin_time": "2026-05-21 21:24:30",
+        "last_checkin_date": "2026-05-21",
+        "last_quota_awarded": 28319,
+        "checked_in_today": true,
+        "checkin_count": 4,
+        "total_checkins": 4,
+        "total_quota": 101850,
+        "success_times": 4,
+        "fail_times": 0,
+        "records": [
+          {
+            "checkin_date": "2026-05-21",
+            "quota_awarded": 28319
+          },
+          {
+            "checkin_date": "2026-05-20",
+            "quota_awarded": 39723
+          },
+          {
+            "checkin_date": "2026-05-18",
+            "quota_awarded": 27052
+          },
+          {
+            "checkin_date": "2026-05-17",
+            "quota_awarded": 6756
+          }
+        ]
+      }
+    },
+    {
+      "username": "hhhhh45656",
+      "password": "hhhhh45656",
+      "created_at": "2026-05-18 14:49:32",
+      "updated_at": "2026-05-21 21:25:03",
+      "stats": {
+        "last_status": "success",
+        "last_message": "签到成功",
+        "last_checkin_time": "2026-05-21 21:25:03",
+        "last_checkin_date": "2026-05-21",
+        "last_quota_awarded": 6618,
+        "checked_in_today": true,
+        "checkin_count": 3,
+        "total_checkins": 3,
+        "total_quota": 74696,
+        "success_times": 3,
+        "fail_times": 0,
+        "records": [
+          {
+            "checkin_date": "2026-05-21",
+            "quota_awarded": 6618
+          },
+          {
+            "checkin_date": "2026-05-20",
+            "quota_awarded": 28873
+          },
+          {
+            "checkin_date": "2026-05-18",
+            "quota_awarded": 39205
+          }
+        ]
+      }
+    }
+  ]
+}

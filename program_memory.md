@@ -12,7 +12,7 @@ Program Memory
 前端可视化：使用 Bootstrap + 原生 JS 展示站点信息、账号信息、签到历史和执行日志。
 
 极简易用：无需数据库，纯文件存储，适合本地部署和个人使用。
-
+项目打包方法 python -m nuitka --onefile --follow-imports --include-package=plugins --include-data-dir=templates=templates --output-dir=build --windows-icon-from-ico=app.ico --jobs=12 nu_app.py
 2. API 设计
 2.1 获取站点与统计信息
 
