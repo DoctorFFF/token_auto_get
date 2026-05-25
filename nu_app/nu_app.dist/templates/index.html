@@ -1,0 +1,814 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <title>插件化自动签到系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background: #f5f6f8;
+        }
+
+        .site-card {
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .account-row:hover {
+            background: #f8f9fa;
+        }
+
+        .small-text {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .stat-card {
+            border-radius: 14px;
+            background: #fff;
+            border: 1px solid #e9ecef;
+        }
+
+        .record-box {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 10px;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .password-tip {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .result-box {
+            white-space: pre-wrap;
+            font-size: 13px;
+            background: #111827;
+            color: #d1d5db;
+            border-radius: 10px;
+            padding: 12px;
+            max-height: 260px;
+            overflow-y: auto;
+        }
+        .chart-box {
+            background: #ffffff;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 12px;
+            height: 260px;
+        }
+
+        .chart-box canvas {
+            max-height: 210px;
+        }
+    </style>
+</head>
+
+<body>
+<!-- Toast 容器 -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050">
+    <div id="toastContainer"></div>
+</div>
+
+<div class="container py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">插件化自动签到系统</h2>
+            <div class="text-muted">使用者承担所有法律后果</div>
+        </div>
+
+        <button class="btn btn-outline-primary" onclick="reloadPlugins()">
+            重新扫描插件
+        </button>
+    </div>
+
+    <div class="alert alert-warning">
+        <strong>使用通知：</strong>
+        每个站点使用前，请先前往对应官网注册好账号。
+        这里不会自动注册账号，只负责保存你提交的账号密码，并调用对应插件执行签到。
+        如果站点有验证码、风控或接口变动，插件可能需要手动调整。
+    </div>
+
+    <!-- 总览统计 -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-2">
+            <div class="stat-card p-3">
+                <div class="text-muted small">站点数量</div>
+                <h4>{{ overview.site_count }}</h4>
+            </div>
+        </div>
+
+        <div class="col-md-2">
+            <div class="stat-card p-3">
+                <div class="text-muted small">账号数量</div>
+                <h4>{{ overview.account_count }}</h4>
+            </div>
+        </div>
+
+        <div class="col-md-2">
+            <div class="stat-card p-3">
+                <div class="text-muted small">今日已签到</div>
+                <h4>{{ overview.today_checked_count }}</h4>
+            </div>
+        </div>
+
+        <div class="col-md-2">
+            <div class="stat-card p-3">
+                <div class="text-muted small">累计签到</div>
+                <h4>{{ overview.total_checkins }}</h4>
+            </div>
+        </div>
+
+        <div class="col-md-2">
+            <div class="stat-card p-3">
+                <div class="text-muted small">累计额度</div>
+                <h4>{{ overview.total_quota }}</h4>
+            </div>
+        </div>
+
+        <div class="col-md-2">
+            <div class="stat-card p-3">
+                <div class="text-muted small">失败次数</div>
+                <h4>{{ overview.fail_times }}</h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- 筛选 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">按站点筛选</label>
+                    <select class="form-select" id="siteFilter" onchange="filterSites()">
+                        <option value="">全部站点</option>
+                        {% for site in sites %}
+                        <option value="{{ site.name }}">{{ site.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">按账号搜索</label>
+                    <input class="form-control" id="accountFilter" placeholder="输入用户名关键词" oninput="filterSites()">
+                </div>
+
+                <div class="col-md-4">
+                    <button class="btn btn-secondary w-100" onclick="clearFilter()">清空筛选</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 执行结果 -->
+    <div class="mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">执行日志</h5>
+            <button class="btn btn-sm btn-outline-secondary" onclick="clearLog()">清空日志</button>
+        </div>
+        <div id="logBox" class="result-box">等待操作...</div>
+    </div>
+
+    <!-- 站点列表 -->
+    {% for site in sites %}
+    <div class="card site-card mb-4 site-block" data-site="{{ site.name }}">
+        <div class="card-header bg-white">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h4 class="mb-1">{{ site.title }}</h4>
+                    <div class="small-text">
+                        插件名：<code>{{ site.name }}</code>
+                    </div>
+                    <div class="small-text">
+                        官网：
+                        <a href="{{ site.url }}" target="_blank">{{ site.url }}</a>
+                    </div>
+                    {% if site.desc %}
+                    <div class="small-text mt-1">{{ site.desc }}</div>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <!-- 修改 onclick 事件为触发模态框 -->
+                    <button class="btn btn-success btn-sm" onclick="triggerCheckinAll('{{ site.name }}')">
+                        该站点全部签到
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="triggerCheckinSelected('{{ site.name }}')">
+                        选中账号签到
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body">
+
+            <!-- 添加账号 -->
+            <div class="border rounded p-3 mb-3 bg-light">
+                <h6>添加账号</h6>
+
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <input class="form-control" id="username-{{ site.name }}" placeholder="用户名 / 邮箱">
+                    </div>
+
+                    <div class="col-md-4">
+                        <input class="form-control" id="password-{{ site.name }}" type="password" placeholder="密码">
+                    </div>
+
+                    <div class="col-md-2">
+                        <button class="btn btn-primary w-100" onclick="addAccount('{{ site.name }}')">
+                            添加账号
+                        </button>
+                    </div>
+
+                    <div class="col-md-2">
+                        <a class="btn btn-outline-secondary w-100" href="{{ site.url }}" target="_blank">
+                            去注册
+                        </a>
+                    </div>
+                </div>
+
+                <div class="password-tip mt-2">
+                    提示：账号密码会保存到 <code>data/{{ site.name }}.json</code>。
+                </div>
+            </div>
+
+            <!-- 账号表格 -->
+            {% if site.accounts %}
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle">
+                    <thead class="table-light">
+                    <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" onclick="toggleSiteAccounts('{{ site.name }}', this)">
+                        </th>
+                        <th>用户名</th>
+                        <th>今日状态</th>
+                        <th>最近签到</th>
+                        <th>最近额度</th>
+                        <th>累计签到</th>
+                        <th>累计额度</th>
+                        <th>成功 / 失败</th>
+                        <th style="width: 260px;">操作</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    {% for account in site.accounts %}
+                    {% set stats = account.stats %}
+                    <tr class="account-row"
+                        data-site="{{ site.name }}"
+                        data-username="{{ account.username }}"
+                        data-records='{{ stats.records | tojson }}'
+                        data-chart-index="{{ loop.index }}">
+                        <td>
+                            <input type="checkbox"
+                                   class="account-checkbox account-checkbox-{{ site.name }}"
+                                   value="{{ account.username }}">
+                        </td>
+
+                        <td>
+                            <strong>{{ account.username }}</strong>
+                            <div class="small-text">创建：{{ account.created_at }}</div>
+                        </td>
+
+                        <td>
+                            {% if stats.last_checkin_date == today %}
+                            <span class="badge text-bg-success">今日已签到</span>
+                            {% else %}
+                            <span class="badge text-bg-secondary">今日未签到</span>
+                            {% endif %}
+
+                            {% if stats.last_status == "fail" %}
+                            <span class="badge text-bg-danger">上次失败</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {{ stats.last_checkin_date or "-" }}
+                            <div class="small-text">{{ stats.last_checkin_time or "" }}</div>
+                        </td>
+
+                        <td>{{ stats.last_quota_awarded or 0 }}</td>
+
+                        <td>{{ stats.total_checkins or 0 }}</td>
+
+                        <td>{{ stats.total_quota or 0 }}</td>
+
+                        <td>
+                            {{ stats.success_times or 0 }} / {{ stats.fail_times or 0 }}
+                        </td>
+
+                        <td>
+                            <button class="btn btn-sm btn-success"
+                                    onclick="checkinOne('{{ site.name }}', '{{ account.username }}')">
+                                签到
+                            </button>
+
+                            <button class="btn btn-sm btn-outline-info"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#detail-{{ site.name }}-{{ loop.index }}">
+                                详情
+                            </button>
+
+                            <button class="btn btn-sm btn-outline-danger"
+                                    onclick="deleteAccount('{{ site.name }}', '{{ account.username }}')">
+                                删除
+                            </button>
+                        </td>
+                    </tr>
+
+                    <tr class="collapse detail-row" id="detail-{{ site.name }}-{{ loop.index }}">
+                        <td colspan="9">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6>账号统计</h6>
+                                    <ul class="mb-0">
+                                        <li>最近消息：{{ stats.last_message or "-" }}</li>
+                                        <li>本月签到次数：{{ stats.checkin_count or 0 }}</li>
+                                        <li>总签到天数：{{ stats.total_checkins or 0 }}</li>
+                                        <li>累计获得额度：{{ stats.total_quota or 0 }}</li>
+                                        <li>最近执行时间：{{ stats.last_checkin_time or "-" }}</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-8">
+                                    <h6>历史记录</h6>
+                                    <div class="record-box">
+                                        {% if stats.records %}
+                                            {% for record in stats.records %}
+                                            <div class="d-flex justify-content-between border-bottom py-1">
+                                                <span>{{ record.checkin_date }}</span>
+                                                <strong>+{{ record.quota_awarded }}</strong>
+                                            </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="text-muted">暂无历史记录</div>
+                                        {% endif %}
+                                    </div>
+                                
+                                    <div class="row mt-3 g-3">
+                                        <div class="col-md-6">
+                                            <div class="chart-box">
+                                                <h6 class="mb-2">签到额度折线图</h6>
+                                                <canvas id="lineChart-{{ site.name }}-{{ loop.index }}"></canvas>
+                                            </div>
+                                        </div>
+                                
+                                        <div class="col-md-6">
+                                            <div class="chart-box">
+                                                <h6 class="mb-2">签到占比饼图</h6>
+                                                <canvas id="pieChart-{{ site.name }}-{{ loop.index }}"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-secondary mb-0">
+                当前站点还没有账号，请先添加账号。
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+
+<!-- 签到模式选择模态框 -->
+<div class="modal fade" id="checkinModeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">选择签到模式</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>请选择执行签到的方式：</p>
+                
+                <!-- 并发模式 -->
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="checkinMode" id="modeParallel" value="parallel" checked>
+                    <label class="form-check-label" for="modeParallel">
+                        <strong>并发模式 (推荐)</strong>
+                        <div class="text-muted small">同时执行多个账号签到，速度快，但可能被风控。</div>
+                    </label>
+                </div>
+
+                <!-- 顺序模式 -->
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="checkinMode" id="modeSequential" value="sequential">
+                    <label class="form-check-label" for="modeSequential">
+                        <strong>顺序模式 (稳定)</strong>
+                        <div class="text-muted small">逐个账号执行，更稳定。</div>
+                        
+                        <!-- 间隔设置区域 -->
+                        <div class="mt-2 ms-4 p-2 border rounded bg-light" style="max-width: 250px;">
+                            <label for="seqInterval" class="form-label small text-muted mb-1">请求间隔 (秒):</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" class="form-control" id="seqInterval" placeholder="留空则随机 2-5s" min="0.5" step="0.1">
+                                <button class="btn btn-outline-primary" type="button" onclick="randomizeInterval()" title="生成随机间隔">🎲 随机</button>
+                            </div>
+                            <div id="intervalTip" class="form-text text-success fst-italic" style="font-size: 11px; display: none; margin-top: 4px;"></div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="confirmCheckin()">开始执行</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    // === 全局变量，用于暂存待执行的签到任务 ===
+    let pendingCheckinTask = null; 
+
+    // === 工具函数 ===
+    function log(text) {
+        const box = document.getElementById("logBox");
+        const time = new Date().toLocaleString();
+        // 限制日志长度，避免页面卡顿
+        if (box.textContent.length > 5000) {
+            box.textContent = "...(日志过长已截断)\n";
+        }
+        box.textContent = `[${time}] ${text}\n` + box.textContent;
+    }
+
+    function clearLog() {
+        document.getElementById("logBox").textContent = "等待操作...";
+    }
+
+    async function postJson(url, data) {
+        try {
+            const resp = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+            return await resp.json();
+        } catch (e) {
+            return { success: false, message: "网络请求失败: " + e.message };
+        }
+    }
+
+    // === Toast 提示 (统一使用这一个) ===
+    function showToast(message, type = "info", delay = 3000) {
+        const toastId = "toast-" + Date.now();
+        // 根据类型选择背景色类
+        let bgClass = "text-bg-info";
+        if (type === "success") bgClass = "text-bg-success";
+        if (type === "danger") bgClass = "text-bg-danger";
+        if (type === "warning") bgClass = "text-bg-warning";
+
+        const toastHTML = `
+            <div id="${toastId}" class="toast align-items-center ${bgClass} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+
+        const container = document.getElementById("toastContainer");
+        container.insertAdjacentHTML("beforeend", toastHTML);
+
+        const toastEl = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastEl, { delay: delay });
+        toast.show();
+
+        toastEl.addEventListener("hidden.bs.toast", () => {
+            toastEl.remove();
+        });
+    }
+
+    // === 图表绘制 ===
+    function drawCharts(pluginName, index, records) {
+        if (!Array.isArray(records) || records.length === 0) return;
+
+        const labels = records.map(item => item.checkin_date || "-");
+        const dataQuota = records.map(item => Number(item.quota_awarded || 0));
+
+        // 折线图
+        const lineCanvas = document.getElementById(`lineChart-${pluginName}-${index}`);
+        if (lineCanvas) {
+            new Chart(lineCanvas, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: "签到额度",
+                        data: dataQuota,
+                        borderColor: "rgba(13, 110, 253, 1)",
+                        backgroundColor: "rgba(13, 110, 253, 0.15)",
+                        fill: true,
+                        tension: 0.35
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        // 饼图
+        const pieCanvas = document.getElementById(`pieChart-${pluginName}-${index}`);
+        if (pieCanvas) {
+            new Chart(pieCanvas, {
+                type: "pie",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: dataQuota,
+                        backgroundColor: labels.map((_, i) => `hsl(${i * 35 % 360}, 70%, 60%)`),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: "bottom" } }
+                }
+            });
+        }
+    }
+
+    // 初始化图表
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll(".account-row").forEach(row => {
+            const pluginName = row.dataset.site;
+            const index = row.dataset.chartIndex;
+            const recordsText = row.dataset.records || "[]";
+            let records = [];
+            try { records = JSON.parse(recordsText); } catch (e) { records = []; }
+            drawCharts(pluginName, index, records);
+        });
+    });
+
+    // === 业务逻辑 ===
+
+    // 1. 添加账号
+    async function addAccount(pluginName) {
+        const usernameInput = document.getElementById(`username-${pluginName}`);
+        const passwordInput = document.getElementById(`password-${pluginName}`);
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        if (!username || !password) {
+            showToast("用户名和密码不能为空", "warning");
+            return;
+        }
+
+        log(`正在添加账号：${pluginName} / ${username}`);
+        const result = await postJson("/api/add_account", {
+            plugin_name: pluginName,
+            username: username,
+            password: password
+        });
+
+        log(`添加结果: ${result.message}`);
+        showToast(result.message, result.success ? "success" : "danger");
+
+        if (result.success) {
+            setTimeout(() => location.reload(), 1000);
+        }
+    }
+
+    // 2. 删除账号
+    async function deleteAccount(pluginName, username) {
+        if (!confirm(`确定删除账号 ${username} 吗？历史记录也将被清除。`)) return;
+
+        log(`正在删除账号：${pluginName} / ${username}`);
+        const result = await postJson("/api/delete_account", {
+            plugin_name: pluginName,
+            username: username
+        });
+
+        log(`删除结果: ${result.message}`);
+        showToast(result.message, result.success ? "success" : "danger");
+
+        if (result.success) {
+            setTimeout(() => location.reload(), 1000);
+        }
+    }
+
+    // 3. 单个账号签到 (不需要选模式，直接执行)
+    async function checkinOne(pluginName, username) {
+        log(`开始单账号签到：${pluginName} / ${username}`);
+        const result = await postJson("/api/checkin_one", {
+            plugin_name: pluginName,
+            username: username
+        });
+
+        log(`签到结果: ${result.message}`);
+        showToast(result.message, result.success ? "success" : "danger");
+        
+        // 单个签到后刷新页面以更新统计
+        setTimeout(() => location.reload(), 1500);
+    }
+
+    // 4. 触发批量签到选择框 (全部)
+    function triggerCheckinAll(pluginName) {
+        pendingCheckinTask = {
+            type: 'all',
+            plugin_name: pluginName
+        };
+        // 弹出模态框
+        const modal = new bootstrap.Modal(document.getElementById('checkinModeModal'));
+        modal.show();
+    }
+
+    // 5. 触发批量签到选择框 (选中)
+    function triggerCheckinSelected(pluginName) {
+        const checkboxes = document.querySelectorAll(`.account-checkbox-${pluginName}:checked`);
+        const usernames = Array.from(checkboxes).map(x => x.value);
+
+        if (usernames.length === 0) {
+            showToast("请先勾选至少一个账号", "warning");
+            return;
+        }
+
+        pendingCheckinTask = {
+            type: 'selected',
+            plugin_name: pluginName,
+            usernames: usernames
+        };
+        // 弹出模态框
+        const modal = new bootstrap.Modal(document.getElementById('checkinModeModal'));
+        modal.show();
+    }
+        // === 新增：生成随机间隔并显示提示 ===
+        function randomizeInterval() {
+            const input = document.getElementById('seqInterval');
+            const tip = document.getElementById('intervalTip');
+            
+            // 生成 2.0 到 5.0 之间的随机数，保留一位小数
+            const randomTime = (Math.random() * (5 - 2) + 2).toFixed(1);
+            
+            input.value = randomTime;
+            tip.textContent = `已随机生成间隔: ${randomTime} 秒`;
+            tip.style.display = 'block';
+            
+            // 3秒后隐藏提示
+            setTimeout(() => {
+                tip.style.display = 'none';
+            }, 3000);
+        }
+    
+        // === 修改：确认执行签到 (从模态框调用) ===
+        async function confirmCheckin() {
+            if (!pendingCheckinTask) return;
+    
+            // 获取用户选择的模式
+            const modeRadio = document.querySelector('input[name="checkinMode"]:checked');
+            if (!modeRadio) {
+                showToast("请选择一种签到模式", "warning");
+                return;
+            }
+            
+            const mode = modeRadio.value;
+            const modeText = mode === 'sequential' ? '顺序' : '并发';
+            
+            let intervalTime = null;
+    
+            // 如果是顺序模式，处理间隔时间
+            if (mode === 'sequential') {
+                const inputVal = document.getElementById('seqInterval').value;
+                
+                if (inputVal && !isNaN(inputVal)) {
+                    // 用户手动填写了数字
+                    intervalTime = parseFloat(inputVal);
+                    log(`使用固定间隔: ${intervalTime} 秒`);
+                } else {
+                    // 用户没填，自动生成随机数 (2-5秒)
+                    intervalTime = (Math.random() * (5 - 2) + 2).toFixed(2); 
+                    log(`未设置间隔，自动随机生成: ${intervalTime} 秒`);
+                    showToast(`随机间隔已生成: ${intervalTime}秒`, 'info', 2000);
+                }
+            }
+            
+            // 关闭模态框
+            const modalEl = document.getElementById('checkinModeModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+    
+            log(`准备执行: ${pendingCheckinTask.plugin_name} (${modeText}模式)`);
+    
+            let result;
+            try {
+                if (pendingCheckinTask.type === 'all') {
+                    log(`开始全站点签到...`);
+                    result = await postJson("/api/checkin_all", {
+                        plugin_name: pendingCheckinTask.plugin_name,
+                        mode: mode,
+                        interval: intervalTime 
+                    });
+                } else {
+                    log(`开始选中账号签到: ${pendingCheckinTask.usernames.join(", ")}`);
+                    result = await postJson("/api/checkin_selected", {
+                        plugin_name: pendingCheckinTask.plugin_name,
+                        usernames: pendingCheckinTask.usernames,
+                        mode: mode,
+                        interval: intervalTime 
+                    });
+                }
+    
+                // 处理返回结果
+                log(`执行完成: ${result.message}`);
+                showToast(result.message, result.success ? "success" : "danger");
+    
+                if (result.results && Array.isArray(result.results)) {
+                    let successCount = result.results.filter(r => r.success).length;
+                    let failCount = result.results.length - successCount;
+                    log(`统计: 成功 ${successCount}, 失败 ${failCount}`);
+                    
+                    const firstFail = result.results.find(r => !r.success);
+                    if (firstFail) {
+                        log(`失败示例 [${firstFail.username}]: ${firstFail.message}`);
+                    }
+                }
+            } catch (e) {
+                log(`执行出错: ${e.message}`);
+                showToast("执行过程中发生网络错误", "danger");
+            }
+    
+            pendingCheckinTask = null;
+            setTimeout(() => location.reload(), 2000);
+        }
+
+    // 7. 重新加载插件
+    async function reloadPlugins() {
+        log("正在重新扫描插件目录...");
+        const result = await postJson("/api/reload_plugins", {});
+        log(result.message);
+        showToast(result.message, "info");
+        setTimeout(() => location.reload(), 1000);
+    }
+
+    // 8. 筛选功能
+    function filterSites() {
+        const siteValue = document.getElementById("siteFilter").value;
+        const accountKeyword = document.getElementById("accountFilter").value.trim().toLowerCase();
+        const siteBlocks = document.querySelectorAll(".site-block");
+
+        siteBlocks.forEach(site => {
+            const siteName = site.dataset.site;
+            let showSite = true;
+
+            if (siteValue && siteName !== siteValue) showSite = false;
+
+            const rows = site.querySelectorAll(".account-row");
+            let matchedAccountCount = 0;
+
+            rows.forEach(row => {
+                const username = row.dataset.username.toLowerCase();
+                const matchAccount = !accountKeyword || username.includes(accountKeyword);
+                
+                // 控制行显示
+                row.style.display = matchAccount ? "" : "none";
+                // 控制详情行显示
+                const next = row.nextElementSibling;
+                if (next && next.classList.contains("detail-row")) {
+                    next.style.display = matchAccount ? "" : "none";
+                }
+
+                if (matchAccount) matchedAccountCount += 1;
+            });
+
+            if (accountKeyword && rows.length > 0 && matchedAccountCount === 0) showSite = false;
+            site.style.display = showSite ? "" : "none";
+        });
+    }
+
+    function clearFilter() {
+        document.getElementById("siteFilter").value = "";
+        document.getElementById("accountFilter").value = "";
+        filterSites();
+    }
+
+    function toggleSiteAccounts(pluginName, source) {
+        const checkboxes = document.querySelectorAll(`.account-checkbox-${pluginName}`);
+        checkboxes.forEach(item => item.checked = source.checked);
+    }
+</script>
+</body>
+</html>

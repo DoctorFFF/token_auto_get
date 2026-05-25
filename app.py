@@ -5,20 +5,14 @@ import importlib.util
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
+import random
 from flask import Flask, render_template, request, jsonify
-
-
 app = Flask(__name__)
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PLUGIN_DIR = os.path.join(BASE_DIR, "plugins")
 DATA_DIR = os.path.join(BASE_DIR, "data")
-
 MAX_WORKERS = 5
-
 plugins = {}
-
-
 # =========================
 # 基础工具
 # =========================
@@ -372,11 +366,10 @@ def run_one_checkin(plugin_name, username):
         "username": username,
         "plugin_name": plugin_name
     }
-
-
-def run_batch_checkin(plugin_name, usernames, mode="parallel"):
+def run_batch_checkin(plugin_name, usernames, mode="parallel", interval=None):
     """
     mode: 'parallel' (并发) 或 'sequential' (顺序)
+    interval: 顺序模式下的间隔时间(秒)。如果为 None，则在 2-5 秒间随机；如果有值，则固定使用该值。
     """
     results = []
     
@@ -385,11 +378,26 @@ def run_batch_checkin(plugin_name, usernames, mode="parallel"):
         for username in usernames:
             res = run_one_checkin(plugin_name, username)
             results.append(res)
-            # 每个账号签到后停顿 2-3 秒，避免请求过快
-            if username != usernames[-1]: # 最后一个不需要等待
-                time.sleep(2) 
+            
+            # 最后一个不需要等待
+            if username != usernames[-1]: 
+                # 确定休眠时间
+                sleep_time = 0
+                
+                if interval is not None:
+                    # 如果传入了固定时间，直接使用
+                    try:
+                        sleep_time = float(interval)
+                    except:
+                        sleep_time = 2 # 异常 fallback
+                else:
+                    # 如果没有传入时间，随机生成 2-5 秒
+                    sleep_time = random.uniform(2, 5)
+                
+                # 执行休眠
+                time.sleep(sleep_time) 
     else:
-        # 并发执行 (原有逻辑)
+        # 并发执行 (原有逻辑，不受 interval 影响)
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             future_map = {}
 
@@ -409,8 +417,6 @@ def run_batch_checkin(plugin_name, usernames, mode="parallel"):
                     })
 
     return results
-
-
 # =========================
 # 页面
 # =========================
@@ -521,15 +527,14 @@ def api_checkin_one():
     result = run_one_checkin(plugin_name, username)
 
     return jsonify(result)
-
-
 @app.route("/api/checkin_selected", methods=["POST"])
 def api_checkin_selected():
     req = request.get_json() or {}
 
     plugin_name = req.get("plugin_name")
     usernames = req.get("usernames", [])
-    mode = req.get("mode", "parallel")  # 获取模式，默认并发
+    mode = req.get("mode", "parallel")
+    interval = req.get("interval", None)  # 新增：获取前端传来的间隔
 
     if plugin_name not in plugins:
         return jsonify({
@@ -543,7 +548,8 @@ def api_checkin_selected():
             "message": "请至少选择一个账号"
         })
 
-    results = run_batch_checkin(plugin_name, usernames, mode=mode)
+    # 传递 interval 给执行函数
+    results = run_batch_checkin(plugin_name, usernames, mode=mode, interval=interval)
 
     return jsonify({
         "success": True,
@@ -557,7 +563,8 @@ def api_checkin_all():
     req = request.get_json() or {}
 
     plugin_name = req.get("plugin_name")
-    mode = req.get("mode", "parallel") # 获取模式，默认并发
+    mode = req.get("mode", "parallel")
+    interval = req.get("interval", None) # 新增：获取前端传来的间隔
 
     if plugin_name not in plugins:
         return jsonify({
@@ -578,7 +585,8 @@ def api_checkin_all():
             "message": "该站点暂无账号"
         })
 
-    results = run_batch_checkin(plugin_name, usernames, mode=mode)
+    # 传递 interval 给执行函数
+    results = run_batch_checkin(plugin_name, usernames, mode=mode, interval=interval)
 
     return jsonify({
         "success": True,

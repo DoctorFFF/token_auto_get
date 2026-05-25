@@ -56,10 +56,10 @@ def decrypt_iv_cipher_base64(context_key: str, data_b64: str) -> str:
 
 if __name__ == "__main__":
     # 这里填你自己的测试上下文 key
-    CONTEXT_KEY = "1779007964b6a0c6e9"
+    CONTEXT_KEY = "1779603213242a2688"
 
     # 这里填 Base64(IV + ciphertext)
-    DATA_B64 = "Q9ThrvCYQ05kJIxFw81u9dY6TMcMpoUUo3Nm8pDjmSw="
+    DATA_B64 = "Tc3NcXda5m9jAHLpOPfdG8hAl1WxigSPGDhq+0BIyYKGIEvTVc6UUTEhLjiJAQs2"
 
     try:
         plain_text = decrypt_iv_cipher_base64(CONTEXT_KEY, DATA_B64)

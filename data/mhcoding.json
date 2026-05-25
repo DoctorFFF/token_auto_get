@@ -4,20 +4,28 @@
       "username": "asdwadwad123",
       "password": "asdwadwad123",
       "created_at": "2026-05-17 02:03:22",
-      "updated_at": "2026-05-23 22:45:08",
+      "updated_at": "2026-05-25 22:10:03",
       "stats": {
         "last_status": "success",
-        "last_message": "签到成功",
-        "last_checkin_time": "2026-05-23 22:45:08",
-        "last_checkin_date": "2026-05-23",
-        "last_quota_awarded": 4216,
+        "last_message": "今日已签到",
+        "last_checkin_time": "2026-05-25 22:10:03",
+        "last_checkin_date": "2026-05-25",
+        "last_quota_awarded": 24646,
         "checked_in_today": true,
-        "checkin_count": 5,
-        "total_checkins": 5,
-        "total_quota": 107375,
-        "success_times": 5,
+        "checkin_count": 7,
+        "total_checkins": 7,
+        "total_quota": 152262,
+        "success_times": 7,
         "fail_times": 0,
         "records": [
+          {
+            "checkin_date": "2026-05-25",
+            "quota_awarded": 24646
+          },
+          {
+            "checkin_date": "2026-05-24",
+            "quota_awarded": 20241
+          },
           {
             "checkin_date": "2026-05-23",
             "quota_awarded": 4216
@@ -45,20 +53,28 @@
       "username": "435edrgdrg",
       "password": "435edrgdrg",
       "created_at": "2026-05-17 02:04:28",
-      "updated_at": "2026-05-21 21:23:57",
+      "updated_at": "2026-05-25 16:36:59",
       "stats": {
         "last_status": "success",
         "last_message": "签到成功",
-        "last_checkin_time": "2026-05-21 21:23:57",
-        "last_checkin_date": "2026-05-21",
-        "last_quota_awarded": 22717,
+        "last_checkin_time": "2026-05-25 16:36:59",
+        "last_checkin_date": "2026-05-25",
+        "last_quota_awarded": 25442,
         "checked_in_today": true,
-        "checkin_count": 4,
-        "total_checkins": 4,
-        "total_quota": 130163,
-        "success_times": 4,
+        "checkin_count": 6,
+        "total_checkins": 6,
+        "total_quota": 175957,
+        "success_times": 6,
         "fail_times": 0,
         "records": [
+          {
+            "checkin_date": "2026-05-25",
+            "quota_awarded": 25442
+          },
+          {
+            "checkin_date": "2026-05-24",
+            "quota_awarded": 20352
+          },
           {
             "checkin_date": "2026-05-21",
             "quota_awarded": 22717
@@ -82,20 +98,24 @@
       "username": "sjkjki344jgd",
       "password": "sjkjki344jgd",
       "created_at": "2026-05-17 02:05:22",
-      "updated_at": "2026-05-21 21:24:30",
+      "updated_at": "2026-05-25 21:18:12",
       "stats": {
         "last_status": "success",
         "last_message": "签到成功",
-        "last_checkin_time": "2026-05-21 21:24:30",
-        "last_checkin_date": "2026-05-21",
-        "last_quota_awarded": 28319,
+        "last_checkin_time": "2026-05-25 21:18:12",
+        "last_checkin_date": "2026-05-25",
+        "last_quota_awarded": 4015,
         "checked_in_today": true,
-        "checkin_count": 4,
-        "total_checkins": 4,
-        "total_quota": 101850,
-        "success_times": 4,
+        "checkin_count": 5,
+        "total_checkins": 5,
+        "total_quota": 105865,
+        "success_times": 5,
         "fail_times": 0,
         "records": [
+          {
+            "checkin_date": "2026-05-25",
+            "quota_awarded": 4015
+          },
           {
             "checkin_date": "2026-05-21",
             "quota_awarded": 28319
@@ -119,20 +139,24 @@
       "username": "hhhhh45656",
       "password": "hhhhh45656",
       "created_at": "2026-05-18 14:49:32",
-      "updated_at": "2026-05-21 21:25:03",
+      "updated_at": "2026-05-25 21:49:52",
       "stats": {
         "last_status": "success",
         "last_message": "签到成功",
-        "last_checkin_time": "2026-05-21 21:25:03",
-        "last_checkin_date": "2026-05-21",
-        "last_quota_awarded": 6618,
+        "last_checkin_time": "2026-05-25 21:49:52",
+        "last_checkin_date": "2026-05-25",
+        "last_quota_awarded": 47185,
         "checked_in_today": true,
-        "checkin_count": 3,
-        "total_checkins": 3,
-        "total_quota": 74696,
-        "success_times": 3,
+        "checkin_count": 4,
+        "total_checkins": 4,
+        "total_quota": 121881,
+        "success_times": 4,
         "fail_times": 0,
         "records": [
+          {
+            "checkin_date": "2026-05-25",
+            "quota_awarded": 47185
+          },
           {
             "checkin_date": "2026-05-21",
             "quota_awarded": 6618

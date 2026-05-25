@@ -398,6 +398,8 @@
             </div>
             <div class="modal-body">
                 <p>请选择执行签到的方式：</p>
+                
+                <!-- 并发模式 -->
                 <div class="form-check mb-2">
                     <input class="form-check-input" type="radio" name="checkinMode" id="modeParallel" value="parallel" checked>
                     <label class="form-check-label" for="modeParallel">
@@ -405,11 +407,23 @@
                         <div class="text-muted small">同时执行多个账号签到，速度快，但可能被风控。</div>
                     </label>
                 </div>
+
+                <!-- 顺序模式 -->
                 <div class="form-check">
                     <input class="form-check-input" type="radio" name="checkinMode" id="modeSequential" value="sequential">
                     <label class="form-check-label" for="modeSequential">
                         <strong>顺序模式 (稳定)</strong>
-                        <div class="text-muted small">逐个账号执行，每个间隔 2 秒，更稳定，适合账号较多时。</div>
+                        <div class="text-muted small">逐个账号执行，更稳定。</div>
+                        
+                        <!-- 间隔设置区域 -->
+                        <div class="mt-2 ms-4 p-2 border rounded bg-light" style="max-width: 250px;">
+                            <label for="seqInterval" class="form-label small text-muted mb-1">请求间隔 (秒):</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" class="form-control" id="seqInterval" placeholder="留空则随机 2-5s" min="0.5" step="0.1">
+                                <button class="btn btn-outline-primary" type="button" onclick="randomizeInterval()" title="生成随机间隔">🎲 随机</button>
+                            </div>
+                            <div id="intervalTip" class="form-text text-success fst-italic" style="font-size: 11px; display: none; margin-top: 4px;"></div>
+                        </div>
                     </label>
                 </div>
             </div>
@@ -642,61 +656,104 @@
         const modal = new bootstrap.Modal(document.getElementById('checkinModeModal'));
         modal.show();
     }
-
-    // 6. 确认执行签到 (从模态框调用)
-    async function confirmCheckin() {
-        if (!pendingCheckinTask) return;
-
-        // 获取用户选择的模式
-        const mode = document.querySelector('input[name="checkinMode"]:checked').value;
-        const modeText = mode === 'sequential' ? '顺序' : '并发';
-        
-        // 关闭模态框
-        const modalEl = document.getElementById('checkinModeModal');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        modal.hide();
-
-        log(`准备执行: ${pendingCheckinTask.plugin_name} (${modeText}模式)`);
-
-        let result;
-        if (pendingCheckinTask.type === 'all') {
-            log(`开始全站点签到...`);
-            result = await postJson("/api/checkin_all", {
-                plugin_name: pendingCheckinTask.plugin_name,
-                mode: mode
-            });
-        } else {
-            log(`开始选中账号签到: ${pendingCheckinTask.usernames.join(", ")}`);
-            result = await postJson("/api/checkin_selected", {
-                plugin_name: pendingCheckinTask.plugin_name,
-                usernames: pendingCheckinTask.usernames,
-                mode: mode
-            });
-        }
-
-        // 处理返回结果
-        log(`执行完成: ${result.message}`);
-        showToast(result.message, result.success ? "success" : "danger");
-
-        // 如果有详细结果，打印前几个到日志
-        if (result.results && Array.isArray(result.results)) {
-            let successCount = result.results.filter(r => r.success).length;
-            let failCount = result.results.length - successCount;
-            log(`统计: 成功 ${successCount}, 失败 ${failCount}`);
+        // === 新增：生成随机间隔并显示提示 ===
+        function randomizeInterval() {
+            const input = document.getElementById('seqInterval');
+            const tip = document.getElementById('intervalTip');
             
-            // 记录第一个失败的详细信息方便调试
-            const firstFail = result.results.find(r => !r.success);
-            if (firstFail) {
-                log(`失败示例 [${firstFail.username}]: ${firstFail.message}`);
-            }
+            // 生成 2.0 到 5.0 之间的随机数，保留一位小数
+            const randomTime = (Math.random() * (5 - 2) + 2).toFixed(1);
+            
+            input.value = randomTime;
+            tip.textContent = `已随机生成间隔: ${randomTime} 秒`;
+            tip.style.display = 'block';
+            
+            // 3秒后隐藏提示
+            setTimeout(() => {
+                tip.style.display = 'none';
+            }, 3000);
         }
-
-        // 清空任务
-        pendingCheckinTask = null;
-
-        // 延迟刷新
-        setTimeout(() => location.reload(), 2000);
-    }
+    
+        // === 修改：确认执行签到 (从模态框调用) ===
+        async function confirmCheckin() {
+            if (!pendingCheckinTask) return;
+    
+            // 获取用户选择的模式
+            const modeRadio = document.querySelector('input[name="checkinMode"]:checked');
+            if (!modeRadio) {
+                showToast("请选择一种签到模式", "warning");
+                return;
+            }
+            
+            const mode = modeRadio.value;
+            const modeText = mode === 'sequential' ? '顺序' : '并发';
+            
+            let intervalTime = null;
+    
+            // 如果是顺序模式，处理间隔时间
+            if (mode === 'sequential') {
+                const inputVal = document.getElementById('seqInterval').value;
+                
+                if (inputVal && !isNaN(inputVal)) {
+                    // 用户手动填写了数字
+                    intervalTime = parseFloat(inputVal);
+                    log(`使用固定间隔: ${intervalTime} 秒`);
+                } else {
+                    // 用户没填，自动生成随机数 (2-5秒)
+                    intervalTime = (Math.random() * (5 - 2) + 2).toFixed(2); 
+                    log(`未设置间隔，自动随机生成: ${intervalTime} 秒`);
+                    showToast(`随机间隔已生成: ${intervalTime}秒`, 'info', 2000);
+                }
+            }
+            
+            // 关闭模态框
+            const modalEl = document.getElementById('checkinModeModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+    
+            log(`准备执行: ${pendingCheckinTask.plugin_name} (${modeText}模式)`);
+    
+            let result;
+            try {
+                if (pendingCheckinTask.type === 'all') {
+                    log(`开始全站点签到...`);
+                    result = await postJson("/api/checkin_all", {
+                        plugin_name: pendingCheckinTask.plugin_name,
+                        mode: mode,
+                        interval: intervalTime 
+                    });
+                } else {
+                    log(`开始选中账号签到: ${pendingCheckinTask.usernames.join(", ")}`);
+                    result = await postJson("/api/checkin_selected", {
+                        plugin_name: pendingCheckinTask.plugin_name,
+                        usernames: pendingCheckinTask.usernames,
+                        mode: mode,
+                        interval: intervalTime 
+                    });
+                }
+    
+                // 处理返回结果
+                log(`执行完成: ${result.message}`);
+                showToast(result.message, result.success ? "success" : "danger");
+    
+                if (result.results && Array.isArray(result.results)) {
+                    let successCount = result.results.filter(r => r.success).length;
+                    let failCount = result.results.length - successCount;
+                    log(`统计: 成功 ${successCount}, 失败 ${failCount}`);
+                    
+                    const firstFail = result.results.find(r => !r.success);
+                    if (firstFail) {
+                        log(`失败示例 [${firstFail.username}]: ${firstFail.message}`);
+                    }
+                }
+            } catch (e) {
+                log(`执行出错: ${e.message}`);
+                showToast("执行过程中发生网络错误", "danger");
+            }
+    
+            pendingCheckinTask = null;
+            setTimeout(() => location.reload(), 2000);
+        }
 
     // 7. 重新加载插件
     async function reloadPlugins() {

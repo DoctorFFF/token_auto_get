@@ -4,20 +4,24 @@
       "username": "Doctor_FF2",
       "password": "Frt20040114",
       "created_at": "2026-05-16 16:25:31",
-      "updated_at": "2026-05-23 22:41:24",
+      "updated_at": "2026-05-25 15:10:57",
       "stats": {
-        "last_status": "success",
-        "last_message": "今日已签到",
-        "last_checkin_time": "2026-05-23 22:41:24",
-        "last_checkin_date": "2026-05-23",
-        "last_quota_awarded": 330098,
+        "last_status": "fail",
+        "last_message": "网络请求失败：HTTPSConnectionPool(host='dawclaudecode.com', port=443): Max retries exceeded with url: /api/user/login?turnstile= (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000024DC67B1790>, 'Connection to dawclaudecode.com timed out. (connect timeout=15)'))",
+        "last_checkin_time": "2026-05-25 15:10:57",
+        "last_checkin_date": "2026-05-24",
+        "last_quota_awarded": 324858,
         "checked_in_today": true,
-        "checkin_count": 14,
-        "total_checkins": 28,
-        "total_quota": 7756416,
-        "success_times": 6,
-        "fail_times": 0,
+        "checkin_count": 15,
+        "total_checkins": 29,
+        "total_quota": 8081274,
+        "success_times": 7,
+        "fail_times": 2,
         "records": [
+          {
+            "checkin_date": "2026-05-24",
+            "quota_awarded": 324858
+          },
           {
             "checkin_date": "2026-05-23",
             "quota_awarded": 330098
@@ -81,20 +85,24 @@
       "username": "Doctor_FF3",
       "password": "Frt20040114",
       "created_at": "2026-05-16 16:26:07",
-      "updated_at": "2026-05-23 22:31:27",
+      "updated_at": "2026-05-25 15:11:14",
       "stats": {
-        "last_status": "success",
-        "last_message": "签到成功",
-        "last_checkin_time": "2026-05-23 22:31:27",
-        "last_checkin_date": "2026-05-23",
-        "last_quota_awarded": 356147,
+        "last_status": "fail",
+        "last_message": "网络请求失败：HTTPSConnectionPool(host='dawclaudecode.com', port=443): Max retries exceeded with url: /api/user/login?turnstile= (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000024DC67B25D0>, 'Connection to dawclaudecode.com timed out. (connect timeout=15)'))",
+        "last_checkin_time": "2026-05-25 15:11:14",
+        "last_checkin_date": "2026-05-24",
+        "last_quota_awarded": 390336,
         "checked_in_today": true,
-        "checkin_count": 13,
-        "total_checkins": 22,
-        "total_quota": 6228480,
-        "success_times": 6,
-        "fail_times": 0,
+        "checkin_count": 14,
+        "total_checkins": 23,
+        "total_quota": 6618816,
+        "success_times": 7,
+        "fail_times": 2,
         "records": [
+          {
+            "checkin_date": "2026-05-24",
+            "quota_awarded": 390336
+          },
           {
             "checkin_date": "2026-05-23",
             "quota_awarded": 356147
@@ -154,20 +162,24 @@
       "username": "Doctor_FFF",
       "password": "Frt20040114",
       "created_at": "2026-05-16 16:26:41",
-      "updated_at": "2026-05-23 22:43:40",
+      "updated_at": "2026-05-25 15:11:31",
       "stats": {
-        "last_status": "success",
-        "last_message": "今日已签到",
-        "last_checkin_time": "2026-05-23 22:43:40",
-        "last_checkin_date": "2026-05-23",
-        "last_quota_awarded": 278313,
+        "last_status": "fail",
+        "last_message": "网络请求失败：HTTPSConnectionPool(host='dawclaudecode.com', port=443): Max retries exceeded with url: /api/user/login?turnstile= (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000024DC67B2ED0>, 'Connection to dawclaudecode.com timed out. (connect timeout=15)'))",
+        "last_checkin_time": "2026-05-25 15:11:31",
+        "last_checkin_date": "2026-05-24",
+        "last_quota_awarded": 491983,
         "checked_in_today": true,
-        "checkin_count": 14,
-        "total_checkins": 28,
-        "total_quota": 7781749,
-        "success_times": 5,
-        "fail_times": 0,
+        "checkin_count": 15,
+        "total_checkins": 29,
+        "total_quota": 8273732,
+        "success_times": 6,
+        "fail_times": 2,
         "records": [
+          {
+            "checkin_date": "2026-05-24",
+            "quota_awarded": 491983
+          },
           {
             "checkin_date": "2026-05-23",
             "quota_awarded": 278313
@@ -231,20 +243,24 @@
       "username": "Doctor_FF1",
       "password": "Frt20040114",
       "created_at": "2026-05-18 14:47:58",
-      "updated_at": "2026-05-23 22:43:51",
+      "updated_at": "2026-05-25 15:11:48",
       "stats": {
-        "last_status": "success",
-        "last_message": "今日已签到",
-        "last_checkin_time": "2026-05-23 22:43:51",
-        "last_checkin_date": "2026-05-23",
-        "last_quota_awarded": 218703,
+        "last_status": "fail",
+        "last_message": "网络请求失败：HTTPSConnectionPool(host='dawclaudecode.com', port=443): Max retries exceeded with url: /api/user/login?turnstile= (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000024DC67B1370>, 'Connection to dawclaudecode.com timed out. (connect timeout=15)'))",
+        "last_checkin_time": "2026-05-25 15:11:48",
+        "last_checkin_date": "2026-05-24",
+        "last_quota_awarded": 69918,
         "checked_in_today": true,
-        "checkin_count": 4,
-        "total_checkins": 4,
-        "total_quota": 961457,
-        "success_times": 4,
-        "fail_times": 0,
+        "checkin_count": 5,
+        "total_checkins": 5,
+        "total_quota": 1031375,
+        "success_times": 5,
+        "fail_times": 2,
         "records": [
+          {
+            "checkin_date": "2026-05-24",
+            "quota_awarded": 69918
+          },
           {
             "checkin_date": "2026-05-23",
             "quota_awarded": 218703
