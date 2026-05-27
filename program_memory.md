@@ -1,4 +1,3 @@
-```markdown
 # Program Memory: AutoCheckin System
 
 ## 1. 项目概述
@@ -35,6 +34,9 @@ AutoCheckin/
 │
 ├── templates/              # 📂 前端模板
 │   └── index.html          # 单页应用：UI 展示、JS 交互逻辑
+│
+├── ai_scheduler.py         # 🤖 AI 智能调度引擎：MiniMax API 集成、策略生成与存储
+├── AI_SCHEDULER_GUIDE.md   # AI 调度系统使用指南
 │
 └── build/                  # 📂 打包输出目录 (Nuitka 生成)
     └── nu_app.exe          # 最终可执行文件
@@ -73,6 +75,66 @@ graph LR
 - 模态框控制：选择签到模式 (并发/顺序) 及设置间隔时间。
 - 实时反馈：通过 `fetch` 调用 API，并在页面日志框实时追加执行结果。
 - 图表渲染：使用 Chart.js 渲染签到额度折线图和饼图。
+- AI 配置界面：提供 API Key 输入、模型选择、策略展示模态框。
+
+### 3.4 AI 智能调度引擎 (ai_scheduler.py)
+**系统定位**：基于 MiniMax API 的半自动化人机协同决策系统。
+
+**核心类**：
+- `AIScheduler`：AI 调度分析器
+  - 调用 MiniMax API 分析历史签到数据
+  - 生成签到策略（推荐账号、间隔时间、风险等级）
+  - 支持多种模型（MiniMax-M1、MiniMax-M2.7 等）
+  
+- `StrategyStorage`：策略持久化存储
+  - 保存 AI 分析历史至 `data/ai_strategies.json`
+  - 支持查询最新策略
+  - 自动保留最近 20 条记录
+
+**工作流程**：
+```
+1. 用户配置 MiniMax API Key → 2. 点击 AI 智能分析
+→ 3. 后端读取历史数据 (data/*.json)
+→ 4. 调用 MiniMax API 分析
+→ 5. AI 返回策略 JSON
+→ 6. 前端展示策略（推荐账号、间隔、风险等级）
+→ 7. 用户确认 → 8. 执行签到
+```
+
+**AI 分析维度**：
+- 账号成功率统计（成功率 < 50% 建议跳过）
+- 签到时间模式（今日已签到不重复推荐）
+- 额度变化趋势（检测异常波动）
+- 风控迹象识别（连续失败、成功率下降）
+
+**策略输出格式**：
+```json
+{
+  "recommended_accounts": [{"username": "...", "priority": "high|medium|low", "reason": "..."}],
+  "skip_accounts": [{"username": "...", "reason": "..."}],
+  "interval_seconds": {"recommended": 3.5, "min": 2.0, "max": 5.0, "reasoning": "..."},
+  "risk_level": "low|medium|high",
+  "best_checkin_time": "10:00-14:00",
+  "reasoning": "整体分析结论",
+  "warnings": ["风险提示列表"]
+}
+```
+
+**安全原则**：
+- AI 仅提供建议，不直接执行敏感操作
+- 所有策略需用户显式确认后才执行
+- API Key 本地存储，不上传第三方
+- 账号数据发送给 MiniMax API 分析（用户须知）
+
+**后端 API 接口**（app.py 中实现）：
+- `GET /api/ai/get_config`：获取 AI 配置（含可用模型列表）
+- `POST /api/ai/save_config`：保存 AI 配置（API Key、模型、启用状态）
+- `POST /api/ai/analyze`：触发 AI 分析指定站点数据
+
+**配置防御性编程**：
+- `/api/ai/get_config` 始终返回 `available_models` 字段（即使配置文件不存在）
+- 使用 `get_json(silent=True)` 避免请求体错误导致 400 异常
+- 所有配置访问使用 `get()` 方法并提供合理默认值
 
 ## 4. API 接口文档
 基础 URL: `http://127.0.0.1:5000`
@@ -87,6 +149,9 @@ graph LR
 | POST | /api/checkin_selected | 选中账号批量签到 | plugin_name, usernames[], mode, interval |
 | POST | /api/checkin_all | 全站点账号签到 | plugin_name, mode, interval |
 | POST | /api/reload_plugins | 重新扫描/加载插件 | - |
+| GET | /api/ai/get_config | 获取 AI 调度配置 | - |
+| POST | /api/ai/save_config | 保存 AI 调度配置 | api_key, model, enabled |
+| POST | /api/ai/analyze | 触发 AI 智能分析 | plugin_name |
 
 **注意：**
 - `mode`: `"parallel"` (并发) 或 `"sequential"` (顺序)。
@@ -95,7 +160,7 @@ graph LR
 ## 5. 插件开发规范
 新建插件文件 `plugins/new_site.py`，必须包含以下要素：
 
-```python
+``python
 import requests
 from datetime import datetime
 
@@ -141,6 +206,9 @@ def run(username, password):
 
 注册插件： 在 `plugins/__init__.py` 的 `BUILTIN_PLUGIN_MODULES` 列表中添加 `"plugins.new_site"`。
 
+**插件与 AI 调度集成**：
+插件返回的标准结果格式会被 AI 调度系统自动分析。确保 `data` 字段中包含完整的统计信息（特别是 `records` 历史记录），这样 AI 才能生成准确的策略建议。
+
 ## 6. 部署与打包
 ### 6.1 开发环境运行
 ```bash
@@ -182,4 +250,3 @@ python -m nuitka --onefile \
 - 并发风控：并发模式速度快但易触发风控。对于敏感站点，建议使用“顺序模式”并设置较大的随机间隔。
 - 插件信任：插件本质是 Python 代码，拥有系统执行权限。请勿运行来源不明的插件。
 - Nu_App 路径逻辑：`nu_app.py` 专门处理了打包后的路径问题。如果在开发中修改了资源加载方式，请同步检查 `nu_app.py` 中的 `BUNDLE_DIR` 和 `RUNTIME_DIR` 逻辑。
-```

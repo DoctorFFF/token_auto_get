@@ -1,6 +1,36 @@
+# Python 缓存
 __pycache__/
 *.pyc
+
+# 数据文件
 data/*.json
+
+# 图片和动态库
 *.png
 *.dll
+
+# 环境变量
 .env
+
+# --- Docker 相关文件 ---
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.override.yml
+
+# --- Nuitka 构建相关 ---
+# 忽略构建过程中的临时文件和缓存
+nu_app/nu_app.build/
+nu_app/nu_app.onefile-build/
+
+# 【重要】请根据实际输出位置调整以下规则：
+# 情况 A: 如果是 --onefile 模式，exe 在根目录，忽略 dist 目录是安全的
+nu_app/nu_app.dist/
+
+# 情况 B: 如果 exe 在 dist 目录里，请删除上面那行，并改为忽略 dist 里的其他杂项
+# nu_app/nu_app.dist/*.log
+# nu_app/nu_app.dist/__pycache__/
+
+# 忽略所有操作系统生成的缩略图或隐藏文件
+.DS_Store
+Thumbs.db

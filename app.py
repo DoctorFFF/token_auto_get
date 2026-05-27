@@ -7,12 +7,22 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import random
 from flask import Flask, render_template, request, jsonify
+
+# 导入 AI 调度模块
+from ai_scheduler import AIScheduler, StrategyStorage
+
 app = Flask(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PLUGIN_DIR = os.path.join(BASE_DIR, "plugins")
 DATA_DIR = os.path.join(BASE_DIR, "data")
 MAX_WORKERS = 5
 plugins = {}
+
+# AI 调度器配置
+AI_CONFIG_FILE = os.path.join(DATA_DIR, "ai_config.json")
+ai_strategy_storage = StrategyStorage(DATA_DIR)
+
+
 # =========================
 # 基础工具
 # =========================
@@ -605,6 +615,240 @@ def api_reload_plugins():
 
 
 # =========================
+# AI 调度 API
+# =========================
+
+def load_ai_config():
+    """加载 AI 配置"""
+    if not os.path.exists(AI_CONFIG_FILE):
+        return {"api_key": "", "model": "MiniMax-M1", "enabled": False}
+    
+    try:
+        with open(AI_CONFIG_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return{"api_key": "", "model": "MiniMax-M1", "enabled":False}
+
+
+def save_ai_config(config):
+    """保存 AI 配置"""
+    with open(AI_CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(config, f, ensure_ascii=False, indent=2)
+
+
+@app.route('/api/ai/get_config', methods=['GET'])
+def get_ai_config():
+    # 预定义可用模型列表
+    DEFAULT_AVAILABLE_MODELS = [
+        "MiniMax-M1",
+        "MiniMax-M2.7",
+        "abab6.5s-chat",
+        "abab6.5g-chat",
+        "abab5.5s-chat"
+    ]
+    
+    config_path = os.path.join(DATA_DIR, "ai_config.json")
+    
+    # 读取现有配置
+    if not os.path.exists(config_path):
+        # 配置文件不存在，使用默认值
+        config_data = {
+            "api_key": "",
+            "model": "MiniMax-M1",
+            "enabled": False
+        }
+    else:
+        # 配置文件存在，读取它
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                config_data = json.load(f)
+        except Exception:
+            config_data = {
+                "api_key": "",
+                "model": "MiniMax-M1",
+                "enabled": False
+            }
+    
+    # 确保返回的响应中始终包含 available_models 字段
+    response_data = {
+        "api_key": config_data.get("api_key", ""),
+        "model": config_data.get("model", "MiniMax-M1"),
+        "enabled": config_data.get("enabled", False),
+        "available_models": DEFAULT_AVAILABLE_MODELS  # 始终返回完整的模型列表
+    }
+
+    return jsonify({
+        "success": True,
+        "config": response_data
+    })
+
+
+@app.route("/api/ai/save_config", methods=["POST"])
+def api_ai_save_config():
+    """保存 AI 配置"""
+    req = request.get_json(silent=True) or {}
+    
+    api_key = req.get("api_key", "").strip()
+    model = req.get("model", "MiniMax-M1").strip()
+    enabled = req.get("enabled", False)
+    
+    if not api_key and enabled:
+        return jsonify({
+            "success": False,
+            "message": "启用 AI 功能需要提供 API Key"
+        })
+    
+    config = {
+        "api_key": api_key,
+        "model": model,
+        "enabled": enabled
+    }
+    
+    save_ai_config(config)
+    
+    return jsonify({
+        "success": True,
+        "message": "AI 配置已保存"
+    })
+
+
+@app.route("/api/ai/analyze", methods=["POST"])
+def api_ai_analyze():
+    """AI 智能分析"""
+    data = request.get_json(silent=True)
+    if not data or "plugin_name" not in data:
+        return jsonify({"success": False, "message": "缺少必要参数"}), 400
+
+    plugin_name = data["plugin_name"]
+    if plugin_name not in plugins:
+        return jsonify({"success": False, "message": "插件不存在"}), 400
+
+    # 加载 AI 配置
+    ai_config = read_json(AI_CONFIG_FILE, {
+        "api_key": "",
+        "model": "MiniMax-M1",
+        "enabled": False
+    })
+    
+    if not ai_config.get("enabled"):
+        return jsonify({"success": False, "message": "AI 功能未启用"}), 400
+    
+    if not ai_config.get("api_key"):
+        return jsonify({"success": False, "message": "未配置 API Key"}), 400
+
+    # 加载账号数据
+    data_file = plugin_data_file(plugin_name)
+    if not os.path.exists(data_file):
+        return jsonify({"success": False, "message": "账号数据不存在"}), 400
+
+    try:
+        with open(data_file, "r", encoding="utf-8") as f:
+            accounts_data = json.load(f)
+    except Exception as e:
+        return jsonify({"success": False, "message": f"读取账号数据失败: {str(e)}"}), 500
+
+    accounts = accounts_data.get("accounts", [])
+
+    # 构建上下文数据
+    context = f"""
+站点名称: {plugins[plugin_name]["title"]}
+插件名: {plugin_name}
+官网: {plugins[plugin_name]["url"]}
+
+账号列表:
+"""
+    for account in accounts:
+        stats = account.get("stats", {})
+        context += f"""
+- 用户名: {account["username"]}
+  最近签到: {stats.get("last_checkin_date", "未知")}
+  最近额度: {stats.get("last_quota_awarded", 0)}
+  累计签到: {stats.get("total_checkins", 0)}
+  成功率: {stats.get("success_times", 0)}/{stats.get("total_checkins", 0)} ({stats.get("success_times", 0) / max(stats.get("total_checkins", 1), 1):.1%})
+  近期状态: {stats.get("last_status", "未知")}
+  最近消息: {stats.get("last_message", "无")}
+"""
+
+    # 调用 AI 分析
+    scheduler = AIScheduler(
+        ai_config.get("api_key", ""),
+        ai_config.get("model", "MiniMax-M1")
+    )
+    
+    result = scheduler._call_ai_analysis(context)
+    
+    if not result["success"]:
+        return jsonify({
+            "success": False,
+            "message": result["error"],
+            "strategy": {}
+        }), 500
+
+    strategy = result["strategy"]
+
+    # 保存策略到存储
+    ai_strategy_storage.save_strategy(plugin_name, strategy)
+
+    return jsonify({
+        "success": True,
+        "strategy": strategy
+    })
+
+
+@app.route("/api/ai/get_strategy")
+def api_ai_get_strategy():
+    """获取最新的 AI 策略"""
+    req = request.args
+    
+    plugin_name = req.get("plugin_name")
+    if not plugin_name:
+        return jsonify({
+            "success": False,
+            "message": "缺少 plugin_name 参数"
+        })
+    
+    strategy_record = ai_strategy_storage.get_latest_strategy(plugin_name)
+    
+    if strategy_record:
+        return jsonify({
+            "success": True,
+            "strategy": strategy_record
+        })
+    else:
+        return jsonify({
+            "success": False,
+            "message": "暂无 AI 策略记录"
+        })
+
+
+# 新增：获取可用模型列表的 API
+@app.route("/api/ai/get_available_models")
+def api_get_available_models():
+    """返回可用的 AI 模型列表"""
+    # 使用 AIScheduler 类中的 detect_available_models 方法
+    # 注意：这里我们假设 ai_scheduler.py 中的类是可导入的，并且该方法存在
+    try:
+        from ai_scheduler import AIScheduler
+        scheduler = AIScheduler(api_key="", model="")  # 创建一个实例，不实际使用 key
+        available_models = scheduler.detect_available_models()
+        
+        # 如果方法不存在，返回默认列表
+        if not hasattr(scheduler, 'detect_available_models'):
+            available_models = ["MiniMax-M1", "abab6.5s-chat"]
+            
+        return jsonify({
+            "success": True,
+            "models": available_models
+        })
+    except Exception as e:
+        print(f"获取可用模型失败: {e}")
+        return jsonify({
+            "success": False,
+            "message": "获取可用模型列表失败"
+        })
+
+
+# =========================
 # 启动
 # =========================
 
@@ -615,5 +859,4 @@ if __name__ == "__main__":
     print("已加载插件：")
     for name, plugin in plugins.items():
         print(f"- {plugin['title']} ({name}) {plugin['url']}")
-
     app.run(host="127.0.0.1", port=5000, debug=True)

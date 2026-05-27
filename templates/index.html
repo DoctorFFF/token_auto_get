@@ -84,9 +84,14 @@
             <div class="text-muted">使用者承担所有法律后果</div>
         </div>
 
-        <button class="btn btn-outline-primary" onclick="reloadPlugins()">
-            重新扫描插件
-        </button>
+        <div>
+            <button class="btn btn-outline-info me-2" onclick="showAIConfig()">
+                🤖 AI 调度配置
+            </button>
+            <button class="btn btn-outline-primary" onclick="reloadPlugins()">
+                重新扫描插件
+            </button>
+        </div>
     </div>
 
     <div class="alert alert-warning">
@@ -196,6 +201,10 @@
                 </div>
 
                 <div>
+                    <!-- AI 智能分析按钮 -->
+                    <button class="btn btn-info btn-sm me-2" onclick="triggerAIAnalyze('{{ site.name }}')" id="ai-btn-{{ site.name }}">
+                        🤖 AI 智能分析
+                    </button>
                     <!-- 修改 onclick 事件为触发模态框 -->
                     <button class="btn btn-success btn-sm" onclick="triggerCheckinAll('{{ site.name }}')">
                         该站点全部签到
@@ -435,11 +444,150 @@
     </div>
 </div>
 
+<!-- AI 配置模态框 -->
+<div class="modal fade" id="aiConfigModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">🤖 AI 调度配置</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <strong>功能说明：</strong>AI 会分析历史签到数据，智能推荐签到策略（哪些账号签到、间隔多久），降低风控风险。
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">启用 AI 调度</label>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="aiEnabled">
+                        <label class="form-check-label" for="aiEnabled">开启 AI 智能分析</label>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">MiniMax API Key</label>
+                    <input type="password" class="form-control" id="aiApiKey" placeholder="请输入你的 MiniMax API Key">
+                    <div class="form-text">你的 Key 仅保存在本地，不会上传到任何地方</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">AI 模型</label>
+                    <select class="form-select" id="aiModel">
+                        <option value="MiniMax-M1">MiniMax-M1（推荐）</option>
+                        <option value="abab6.5s-chat">abab6.5s-chat</option>
+                        <!-- 其他模型将通过 JavaScript 动态添加 -->
+                    </select>
+                </div>
+
+                <div id="aiConfigStatus" class="alert d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveAIConfig()">保存配置</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI 策略展示模态框 -->
+<div class="modal fade" id="aiStrategyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">🤖 AI 智能签到策略</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="aiStrategyLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2">AI 正在分析数据，请稍候...</p>
+                </div>
+
+                <div id="aiStrategyContent" class="d-none">
+                    <!-- 风险等级 -->
+                    <div class="alert mb-3" id="aiRiskAlert">
+                        <strong>风险等级：</strong><span id="aiRiskLevel"></span>
+                    </div>
+
+                    <!-- 分析结论 -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">📊 分析结论</h6>
+                        </div>
+                        <div class="card-body">
+                            <p id="aiReasoning" class="mb-0"></p>
+                        </div>
+                    </div>
+
+                    <!-- 推荐签到账号 -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0">✅ 推荐签到账号</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul id="aiRecommendedAccounts" class="list-group list-group-flush"></ul>
+                        </div>
+                    </div>
+
+                    <!-- 建议跳过账号 -->
+                    <div class="card mb-3" id="aiSkipSection">
+                        <div class="card-header bg-warning">
+                            <h6 class="mb-0">⚠️ 建议跳过账号</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul id="aiSkipAccounts" class="list-group list-group-flush"></ul>
+                        </div>
+                    </div>
+
+                    <!-- 间隔时间建议 -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0">⏱️ 间隔时间建议</h6>
+                        </div>
+                        <div class="card-body">
+                            <h4 id="aiIntervalTime" class="text-primary"></h4>
+                            <p id="aiIntervalReasoning" class="text-muted mb-0 small"></p>
+                        </div>
+                    </div>
+
+                    <!-- 最佳签到时间 -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-secondary text-white">
+                            <h6 class="mb-0">🕐 最佳签到时间</h6>
+                        </div>
+                        <div class="card-body">
+                            <p id="aiBestTime" class="mb-0"></p>
+                        </div>
+                    </div>
+
+                    <!-- 警告信息 -->
+                    <div class="card mb-3" id="aiWarningsSection">
+                        <div class="card-header bg-danger text-white">
+                            <h6 class="mb-0">🚨 风险提示</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul id="aiWarnings" class="mb-0"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-success" id="aiApplyStrategyBtn" onclick="applyAIStrategy()" disabled>
+                    应用策略并签到
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
     // === 全局变量，用于暂存待执行的签到任务 ===
     let pendingCheckinTask = null; 
+    let currentAIStrategy = null; // 存储当前 AI 策略
 
     // === 工具函数 ===
     function log(text) {
@@ -809,6 +957,304 @@
         const checkboxes = document.querySelectorAll(`.account-checkbox-${pluginName}`);
         checkboxes.forEach(item => item.checked = source.checked);
     }
+
+    // === AI 调度功能 ===
+
+    // 1. 显示 AI 配置模态框
+    async function showAIConfig() {
+        const modal = new bootstrap.Modal(document.getElementById('aiConfigModal'));
+        modal.show();
+
+        // 加载当前配置
+        try {
+            const resp = await fetch('/api/ai/get_config');
+            
+            if (!resp.ok) {
+                throw new Error(`HTTP 错误: ${resp.status}`);
+            }
+            
+            const result = await resp.json();
+            console.log('AI 配置响应:', result);
+            
+            if (result.success && result.config) {
+                // 设置表单值
+                document.getElementById('aiEnabled').checked = result.config.enabled || false;
+                document.getElementById('aiApiKey').value = result.config.api_key || '';
+                
+                // 动态添加可用模型
+                const availableModels = result.config.available_models || [];
+                console.log('可用模型列表:', availableModels);
+                
+                const modelSelect = document.getElementById('aiModel');
+                modelSelect.innerHTML = ''; // 清空原有选项
+                
+                if (availableModels.length === 0) {
+                    // 如果没有模型，添加默认选项
+                    const option = document.createElement('option');
+                    option.value = "MiniMax-M1";
+                    option.textContent = "MiniMax-M1（默认）";
+                    option.selected = true;
+                    modelSelect.appendChild(option);
+                } else {
+                    // 添加所有可用模型
+                    availableModels.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model;
+                        option.textContent = model;
+                        
+                        // 如果这是当前选择的模型，设置为选中
+                        if (model === result.config.model) {
+                            option.selected = true;
+                        }
+                        
+                        modelSelect.appendChild(option);
+                    });
+                }
+                
+                // 如果没有选中任何模型，默认选择第一个
+                if (!modelSelect.value && modelSelect.options.length > 0) {
+                    modelSelect.selectedIndex = 0;
+                }
+                
+            } else {
+                console.error('响应格式不正确:', result);
+                showToast('加载 AI 配置失败', 'danger');
+            }
+        } catch (e) {
+            console.error('加载 AI 配置失败:', e);
+            showToast('网络请求失败: ' + e.message, 'danger');
+            
+            // 出错时使用默认配置
+            const modelSelect = document.getElementById('aiModel');
+            modelSelect.innerHTML = '';
+            const option = document.createElement('option');
+            option.value = "MiniMax-M1";
+            option.textContent = "MiniMax-M1（默认）";
+            option.selected = true;
+            modelSelect.appendChild(option);
+        }
+    }
+
+    // 2. 保存 AI 配置
+    async function saveAIConfig() {
+        const enabled = document.getElementById('aiEnabled').checked;
+        const apiKey = document.getElementById('aiApiKey').value.trim();
+        const model = document.getElementById('aiModel').value;
+
+        if (enabled && !apiKey) {
+            showAIConfigStatus('请提供 API Key', 'danger');
+            return;
+        }
+
+        showAIConfigStatus('正在保存...', 'info');
+
+        try {
+            const result = await postJson('/api/ai/save_config', {
+                api_key: apiKey,
+                model: model,
+                enabled: enabled
+            });
+
+            if (result.success) {
+                showAIConfigStatus(result.message, 'success');
+                showToast(result.message, 'success');
+                setTimeout(() => {
+                    bootstrap.Modal.getInstance(document.getElementById('aiConfigModal')).hide();
+                }, 1000);
+            } else {
+                showAIConfigStatus(result.message, 'danger');
+            }
+        } catch (e) {
+            showAIConfigStatus('保存失败: ' + e.message, 'danger');
+        }
+    }
+
+    function showAIConfigStatus(message, type) {
+        const statusEl = document.getElementById('aiConfigStatus');
+        statusEl.className = `alert alert-${type}`;
+        statusEl.textContent = message;
+        statusEl.classList.remove('d-none');
+    }
+
+    // 3. 触发 AI 分析
+    async function triggerAIAnalyze(pluginName) {
+        // 检查 AI 是否启用
+        try {
+            const resp = await fetch('/api/ai/get_config');
+            const result = await resp.json();
+            
+            if (!result.success || !result.config.enabled) {
+                showToast('请先配置并启用 AI 功能', 'warning');
+                showAIConfig();
+                return;
+            }
+        } catch (e) {
+            showToast('检查 AI 配置失败', 'danger');
+            return;
+        }
+
+        // 显示策略模态框
+        const modal = new bootstrap.Modal(document.getElementById('aiStrategyModal'));
+        modal.show();
+
+        // 重置状态
+        document.getElementById('aiStrategyLoading').classList.remove('d-none');
+        document.getElementById('aiStrategyContent').classList.add('d-none');
+        document.getElementById('aiApplyStrategyBtn').disabled = true;
+        currentAIStrategy = null;
+
+        log(`开始 AI 智能分析: ${pluginName}`);
+
+        // 调用 AI 分析
+        try {
+            const result = await postJson('/api/ai/analyze', {
+                plugin_name: pluginName
+            });
+
+            if (result.success) {
+                log('AI 分析完成');
+                displayAIStrategy(result.strategy, pluginName);
+            } else {
+                log('AI 分析失败: ' + result.message);
+                showToast(result.message, 'danger');
+                bootstrap.Modal.getInstance(document.getElementById('aiStrategyModal')).hide();
+            }
+        } catch (e) {
+            log('AI 分析出错: ' + e.message);
+            showToast('AI 分析失败: ' + e.message, 'danger');
+            bootstrap.Modal.getInstance(document.getElementById('aiStrategyModal')).hide();
+        }
+    }
+
+    // 4. 显示 AI 策略
+    function displayAIStrategy(strategy, pluginName) {
+        document.getElementById('aiStrategyLoading').classList.add('d-none');
+        document.getElementById('aiStrategyContent').classList.remove('d-none');
+
+        currentAIStrategy = strategy;
+
+        // 风险等级
+        const riskLevel = strategy.risk_level || 'unknown';
+        const riskAlert = document.getElementById('aiRiskAlert');
+        const riskText = document.getElementById('aiRiskLevel');
+        
+        riskText.textContent = riskLevel === 'low' ? '低风险 ✅' : 
+                               riskLevel === 'medium' ? '中风险 ⚠️' : '高风险 🚨';
+        
+        riskAlert.className = `alert mb-3 ${riskLevel === 'low' ? 'alert-success' : 
+                                            riskLevel === 'medium' ? 'alert-warning' : 'alert-danger'}`;
+
+        // 分析结论
+        document.getElementById('aiReasoning').textContent = strategy.reasoning || '无';
+
+        // 推荐账号
+        const recommendedList = document.getElementById('aiRecommendedAccounts');
+        recommendedList.innerHTML = '';
+        if (strategy.recommended_accounts && strategy.recommended_accounts.length > 0) {
+            strategy.recommended_accounts.forEach(acc => {
+                const priorityBadge = acc.priority === 'high' ? 'bg-success' : 
+                                      acc.priority === 'medium' ? 'bg-warning' : 'bg-secondary';
+                const priorityText = acc.priority === 'high' ? '高' : 
+                                     acc.priority === 'medium' ? '中' : '低';
+                
+                recommendedList.innerHTML += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${acc.username}</strong>
+                            <div class="small text-muted">${acc.reason}</div>
+                        </div>
+                        <span class="badge ${priorityBadge}">${priorityText}优先级</span>
+                    </li>
+                `;
+            });
+        } else {
+            recommendedList.innerHTML = '<li class="list-group-item text-muted">暂无推荐账号</li>';
+        }
+
+        // 跳过账号
+        const skipSection = document.getElementById('aiSkipSection');
+        const skipList = document.getElementById('aiSkipAccounts');
+        skipList.innerHTML = '';
+        
+        if (strategy.skip_accounts && strategy.skip_accounts.length > 0) {
+            skipSection.classList.remove('d-none');
+            strategy.skip_accounts.forEach(acc => {
+                skipList.innerHTML += `
+                    <li class="list-group-item">
+                        <strong>${acc.username}</strong>
+                        <div class="small text-muted">${acc.reason}</div>
+                    </li>
+                `;
+            });
+        } else {
+            skipSection.classList.add('d-none');
+        }
+
+        // 间隔时间
+        const interval = strategy.interval_seconds || {};
+        document.getElementById('aiIntervalTime').textContent = `推荐: ${interval.recommended || 3.5} 秒`;
+        document.getElementById('aiIntervalReasoning').textContent = interval.reasoning || '';
+
+        // 最佳时间
+        document.getElementById('aiBestTime').textContent = strategy.best_checkin_time || '无特定建议';
+
+        // 警告信息
+        const warningsSection = document.getElementById('aiWarningsSection');
+        const warningsList = document.getElementById('aiWarnings');
+        warningsList.innerHTML = '';
+        
+        if (strategy.warnings && strategy.warnings.length > 0) {
+            warningsSection.classList.remove('d-none');
+            strategy.warnings.forEach(warning => {
+                warningsList.innerHTML += `<li class="text-danger">${warning}</li>`;
+            });
+        } else {
+            warningsSection.classList.add('d-none');
+        }
+
+        // 启用应用按钮
+        document.getElementById('aiApplyStrategyBtn').disabled = false;
+        document.getElementById('aiApplyStrategyBtn').dataset.pluginName = pluginName;
+    }
+
+    // 5. 应用 AI 策略并签到
+    async function applyAIStrategy() {
+        if (!currentAIStrategy || !document.getElementById('aiApplyStrategyBtn').dataset.pluginName) {
+            showToast('策略数据无效', 'danger');
+            return;
+        }
+
+        const pluginName = document.getElementById('aiApplyStrategyBtn').dataset.pluginName;
+        const recommendedAccounts = currentAIStrategy.recommended_accounts || [];
+        const interval = currentAIStrategy.interval_seconds?.recommended || 3.5;
+
+        if (recommendedAccounts.length === 0) {
+            showToast('AI 未推荐任何账号', 'warning');
+            return;
+        }
+
+        // 关闭策略模态框
+        bootstrap.Modal.getInstance(document.getElementById('aiStrategyModal')).hide();
+
+        // 准备签到任务
+        pendingCheckinTask = {
+            type: 'selected',
+            plugin_name: pluginName,
+            usernames: recommendedAccounts.map(acc => acc.username)
+        };
+
+        // 设置顺序模式和间隔时间
+        document.getElementById('modeSequential').checked = true;
+        document.getElementById('seqInterval').value = interval;
+
+        log(`应用 AI 策略: 签到 ${recommendedAccounts.length} 个账号，间隔 ${interval} 秒`);
+        showToast(`准备执行 AI 推荐的签到策略`, 'info');
+
+        // 显示签到模式选择框（让用户最终确认）
+        const checkinModal = new bootstrap.Modal(document.getElementById('checkinModeModal'));
+        checkinModal.show();
+    }
+
 </script>
 </body>
 </html>
